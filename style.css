@@ -354,6 +354,148 @@ img {
 
 
 /* ------------------------------
+   PRICING
+------------------------------ */
+
+.pricing-section {
+    background: #edf3ff;
+}
+
+.pricing-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+    gap: 28px;
+    align-items: start;
+}
+
+.pricing-card,
+.pricing-highlight,
+.pricing-policy {
+    border: 1px solid #dce4f0;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 16px 40px rgba(27, 42, 74, 0.07);
+}
+
+.pricing-card {
+    padding: 10px 30px;
+}
+
+.price-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 24px;
+    padding: 18px 0;
+    border-bottom: 1px solid #e6ebf3;
+}
+
+.price-row:last-child {
+    border-bottom: none;
+}
+
+.price-row span {
+    color: #263146;
+    font-weight: 700;
+}
+
+.price-row strong {
+    color: #1558d8;
+    text-align: right;
+}
+
+.price-row small {
+    grid-column: 1 / -1;
+    color: #69758a;
+}
+
+.pricing-details {
+    display: grid;
+    gap: 18px;
+}
+
+.pricing-highlight,
+.pricing-policy {
+    padding: 25px;
+}
+
+.pricing-highlight {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    border-color: #aac5ff;
+}
+
+.pricing-badge {
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #246bfd;
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+.pricing-details h3 {
+    margin-bottom: 8px;
+    font-size: 1.16rem;
+}
+
+.pricing-details p {
+    color: #5b667a;
+    font-size: 0.94rem;
+}
+
+.pricing-details .policy-exclusions {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e6ebf3;
+    font-size: 0.84rem;
+}
+
+.pricing-note {
+    max-width: 900px;
+    margin: 30px auto 0;
+    color: #526078;
+    text-align: center;
+    font-size: 0.94rem;
+}
+
+.pricing-action {
+    margin-top: 24px;
+    text-align: center;
+}
+
+@media (max-width: 860px) {
+    .pricing-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 540px) {
+    .pricing-card {
+        padding: 8px 20px;
+    }
+
+    .price-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+    }
+
+    .price-row strong {
+        text-align: left;
+    }
+
+    .pricing-highlight {
+        display: block;
+    }
+
+    .pricing-badge {
+        display: inline-block;
+        margin-bottom: 14px;
+    }
+}
+
+/* ------------------------------
    ABOUT
 ------------------------------ */
 
