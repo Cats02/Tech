@@ -430,6 +430,10 @@ img {
 
 .cad-action {
     margin-top: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
     text-align: center;
 }
 
