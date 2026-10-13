@@ -1150,19 +1150,24 @@ main {
 
 .site-header {
     border-bottom: 1px solid rgba(39, 228, 255, 0.28);
-    background: rgba(3, 9, 22, 0.88);
+    background: linear-gradient(
+        180deg,
+        #010714 0%,
+        #010714 25%,
+        #010410 50%,
+        #01040e 64%,
+        #010613 80%,
+        #010a15 100%
+    );
     box-shadow: 0 10px 36px rgba(0, 0, 0, 0.34);
-    backdrop-filter: blur(18px);
 }
 
 .logo {
     position: relative;
-    width: 260px;
-    aspect-ratio: 2.75 / 1;
-    align-items: flex-start;
-    overflow: visible;
+    width: 290px;
+    align-items: center;
+    overflow: hidden;
     padding: 0;
-    isolation: isolate;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -1174,54 +1179,18 @@ main {
 }
 
 .logo::after {
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    background:
-        radial-gradient(
-            ellipse at 25% 68%,
-            rgba(255, 255, 255, 0.7),
-            transparent 24%
-        ),
-        radial-gradient(
-            ellipse at 88% 80%,
-            rgba(215, 55, 255, 0.52),
-            transparent 21%
-        ),
-        linear-gradient(
-            180deg,
-            transparent 58%,
-            #f5fbff 61%,
-            #74e6ff 66%,
-            #168eea 71%,
-            #071c4c 76%,
-            #24a9e9 81%,
-            #2148b4 86%,
-            #9f38e6 90%,
-            transparent 91%
-    );
-    content: "";
-    clip-path: inset(60% 0 11% 0);
-    filter: none;
-    -webkit-mask-image: url("assets/everbright-digital-logo.png");
-    -webkit-mask-repeat: no-repeat;
-    -webkit-mask-position: left top;
-    -webkit-mask-size: 100% auto;
-    mask-image: url("assets/everbright-digital-logo.png");
-    mask-repeat: no-repeat;
-    mask-position: left top;
-    mask-size: 100% auto;
-    opacity: 0.88;
-    pointer-events: none;
+    display: none;
 }
 
 .brand-logo {
     position: relative;
     z-index: 1;
     flex: 0 0 auto;
-    clip-path: inset(0 0 20% 0);
+    width: 100%;
+    height: auto;
+    clip-path: none;
     transform: none;
-    filter: drop-shadow(0 0 1px rgba(39, 228, 255, 0.38));
+    filter: none;
     image-rendering: auto;
 }
 
@@ -1706,7 +1675,7 @@ main {
 
 @media (max-width: 900px) {
     .logo {
-        width: 205px;
+        width: 230px;
     }
 
     .nav-links {
@@ -1734,7 +1703,7 @@ main {
     }
 
     .logo {
-        width: 183px;
+        width: 215px;
         padding: 0;
         border-radius: 0;
     }
@@ -1763,7 +1732,7 @@ main {
 
 @media (max-width: 480px) {
     .logo {
-        width: 171px;
+        width: 195px;
     }
 }
 
