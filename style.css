@@ -596,6 +596,13 @@ img {
     color: #b8c1d1;
 }
 
+.about-grid h1 {
+    margin-bottom: 18px;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.15;
+    letter-spacing: -1px;
+}
+
 .about-features {
     display: grid;
     gap: 18px;
@@ -621,6 +628,96 @@ img {
 
 .feature p {
     color: #b5bfd0;
+}
+
+.about-story-section {
+    background: #ffffff;
+}
+
+.about-story-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.7fr) minmax(0, 1.3fr);
+    gap: 80px;
+    align-items: start;
+}
+
+.about-story-grid h2,
+.trust-card h2,
+.about-cta h2 {
+    margin-bottom: 18px;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.15;
+    letter-spacing: -1px;
+}
+
+.about-story-content {
+    display: grid;
+    gap: 20px;
+}
+
+.about-story-content p {
+    color: #526078;
+}
+
+.about-story-content strong {
+    color: #263146;
+}
+
+.trust-section {
+    background: #edf3ff;
+}
+
+.trust-card {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 26px;
+    border: 1px solid #aac5ff;
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 18px 50px rgba(30, 49, 86, 0.09);
+}
+
+.trust-icon {
+    width: 54px;
+    height: 54px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: #246bfd;
+    color: #ffffff;
+    font-size: 1.5rem;
+    font-weight: 800;
+}
+
+.trust-card p:not(.eyebrow) {
+    color: #526078;
+}
+
+.trust-card p + p {
+    margin-top: 16px;
+}
+
+.about-cta-section {
+    background: #ffffff;
+}
+
+.about-cta {
+    max-width: 820px;
+    text-align: center;
+}
+
+.about-cta > p {
+    margin-bottom: 18px;
+    color: #246bfd;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.about-cta .button {
+    margin-top: 12px;
 }
 
 
@@ -923,8 +1020,13 @@ img {
 
     .hero-grid,
     .about-grid,
+    .about-story-grid,
     .contact-grid {
         grid-template-columns: 1fr;
+    }
+
+    .about-story-grid {
+        gap: 34px;
     }
 
     .services-grid {
@@ -964,6 +1066,11 @@ img {
 
     .section {
         padding: 75px 0;
+    }
+
+    .trust-card {
+        padding: 34px 24px;
+        grid-template-columns: 1fr;
     }
 
     .footer-content {
