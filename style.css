@@ -284,6 +284,7 @@ img {
     text-align: center;
 }
 
+.section-heading h1,
 .section-heading h2,
 .about-grid h2,
 .contact-content h2 {
@@ -1277,6 +1278,7 @@ main {
 }
 
 .hero h1,
+.section-heading h1,
 .section-heading h2,
 .about-grid h1,
 .about-grid h2,
