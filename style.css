@@ -1156,13 +1156,72 @@ main {
 }
 
 .logo {
-    padding: 4px 9px;
-    border: 1px solid rgba(104, 207, 255, 0.18);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow:
-        0 0 22px rgba(39, 228, 255, 0.14),
-        inset 0 0 12px rgba(50, 112, 255, 0.08);
+    position: relative;
+    width: 260px;
+    aspect-ratio: 2.75 / 1;
+    align-items: flex-start;
+    overflow: visible;
+    padding: 0;
+    isolation: isolate;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.logo::before {
+    position: absolute;
+    inset: 6% -5%;
+    z-index: 0;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 28% 48%, rgba(39, 228, 255, 0.2), transparent 56%),
+        radial-gradient(circle at 72% 52%, rgba(62, 105, 255, 0.16), transparent 54%),
+        radial-gradient(circle at 88% 55%, rgba(178, 54, 255, 0.14), transparent 58%);
+    filter: blur(14px);
+    content: "";
+    opacity: 0.84;
+    pointer-events: none;
+}
+
+.logo::after {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: linear-gradient(
+        100deg,
+        #f7fbff 8%,
+        #bdefff 29%,
+        #29dcff 48%,
+        #2879ff 70%,
+        #cc45ff 96%
+    );
+    content: "";
+    clip-path: inset(66% 0 0 0);
+    filter:
+        drop-shadow(0 0 2px rgba(220, 247, 255, 0.58))
+        drop-shadow(0 0 6px rgba(39, 228, 255, 0.25));
+    -webkit-mask-image: url("assets/everbright-digital-logo.png");
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: left top;
+    -webkit-mask-size: 100% auto;
+    mask-image: url("assets/everbright-digital-logo.png");
+    mask-repeat: no-repeat;
+    mask-position: left top;
+    mask-size: 100% auto;
+    opacity: 0.96;
+    pointer-events: none;
+}
+
+.brand-logo {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 auto;
+    clip-path: inset(0 0 9% 0);
+    transform: translateY(-1px);
+    filter:
+        drop-shadow(0 0 5px rgba(39, 228, 255, 0.28))
+        drop-shadow(0 0 9px rgba(111, 70, 255, 0.16));
 }
 
 .nav-links a {
@@ -1645,6 +1704,10 @@ main {
 }
 
 @media (max-width: 900px) {
+    .logo {
+        width: 205px;
+    }
+
     .nav-links {
         border-bottom-color: rgba(39, 228, 255, 0.28);
         background: rgba(4, 11, 25, 0.98);
@@ -1670,8 +1733,9 @@ main {
     }
 
     .logo {
-        padding: 3px 6px;
-        border-radius: 9px;
+        width: 183px;
+        padding: 0;
+        border-radius: 0;
     }
 
     .cad-service .process-grid::before {
@@ -1693,6 +1757,12 @@ main {
     .privacy-content,
     .no-fix-card {
         backdrop-filter: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .logo {
+        width: 171px;
     }
 }
 
