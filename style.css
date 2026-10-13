@@ -1090,6 +1090,624 @@ img {
 }
 
 /* ------------------------------
+   EVERBRIGHT 4D TECHNOLOGY THEME
+------------------------------ */
+
+:root {
+    color-scheme: dark;
+    --tech-bg: #040814;
+    --tech-bg-deep: #02050d;
+    --tech-panel: rgba(10, 22, 44, 0.82);
+    --tech-panel-strong: rgba(12, 27, 54, 0.96);
+    --tech-border: rgba(63, 169, 255, 0.42);
+    --tech-border-bright: rgba(63, 225, 255, 0.82);
+    --tech-cyan: #27e4ff;
+    --tech-blue: #2474ff;
+    --tech-purple: #c43cff;
+    --tech-text: #f4f8ff;
+    --tech-muted: #b9cae1;
+    --tech-gradient: linear-gradient(
+        120deg,
+        var(--tech-cyan),
+        var(--tech-blue) 52%,
+        var(--tech-purple)
+    );
+    --tech-shadow:
+        0 22px 60px rgba(0, 0, 0, 0.38),
+        0 0 30px rgba(36, 116, 255, 0.1);
+}
+
+html {
+    background: var(--tech-bg-deep);
+}
+
+body {
+    position: relative;
+    background:
+        radial-gradient(circle at 8% 10%, rgba(0, 206, 255, 0.11), transparent 28%),
+        radial-gradient(circle at 90% 25%, rgba(158, 44, 255, 0.12), transparent 30%),
+        linear-gradient(145deg, #071326 0%, var(--tech-bg) 42%, #060b19 100%);
+    color: var(--tech-text);
+}
+
+body::before {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(42, 149, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(42, 149, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(135deg, transparent 48%, rgba(36, 116, 255, 0.045) 49%, transparent 50%);
+    background-size: 52px 52px, 52px 52px, 180px 180px;
+    content: "";
+    mask-image: linear-gradient(to bottom, black, rgba(0, 0, 0, 0.35));
+}
+
+main {
+    overflow: clip;
+}
+
+.site-header {
+    border-bottom: 1px solid rgba(39, 228, 255, 0.28);
+    background: rgba(3, 9, 22, 0.88);
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(18px);
+}
+
+.logo {
+    padding: 4px 9px;
+    border: 1px solid rgba(104, 207, 255, 0.18);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow:
+        0 0 22px rgba(39, 228, 255, 0.14),
+        inset 0 0 12px rgba(50, 112, 255, 0.08);
+}
+
+.nav-links a {
+    position: relative;
+    color: #c7d6ea;
+}
+
+.nav-links a:not(.nav-contact)::after {
+    position: absolute;
+    right: 0;
+    bottom: -10px;
+    left: 0;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--tech-gradient);
+    box-shadow: 0 0 10px var(--tech-cyan);
+    content: "";
+    opacity: 0;
+    transform: scaleX(0.35);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.nav-links a:hover,
+.nav-links a[aria-current] {
+    color: #ffffff;
+}
+
+.nav-links a:not(.nav-contact):hover::after,
+.nav-links a[aria-current]:not(.nav-contact)::after {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+.nav-contact,
+.button-primary {
+    border: 1px solid rgba(129, 242, 255, 0.64);
+    background: var(--tech-gradient);
+    color: #ffffff !important;
+    box-shadow:
+        0 10px 30px rgba(59, 64, 255, 0.28),
+        0 0 22px rgba(39, 228, 255, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.36);
+}
+
+.nav-contact:hover,
+.button-primary:hover {
+    box-shadow:
+        0 14px 38px rgba(80, 55, 255, 0.38),
+        0 0 30px rgba(39, 228, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.menu-button {
+    color: var(--tech-cyan);
+    text-shadow: 0 0 12px rgba(39, 228, 255, 0.55);
+}
+
+.hero {
+    position: relative;
+    background:
+        radial-gradient(circle at 73% 25%, rgba(91, 50, 255, 0.18), transparent 28%),
+        radial-gradient(circle at 20% 90%, rgba(0, 204, 255, 0.12), transparent 28%);
+}
+
+.hero::after {
+    position: absolute;
+    right: -12%;
+    bottom: -140px;
+    width: 520px;
+    height: 520px;
+    border: 1px solid rgba(39, 228, 255, 0.12);
+    border-radius: 50%;
+    box-shadow:
+        0 0 120px rgba(36, 116, 255, 0.16),
+        inset 0 0 80px rgba(196, 60, 255, 0.07);
+    content: "";
+    pointer-events: none;
+}
+
+.eyebrow {
+    color: var(--tech-cyan);
+    text-shadow: 0 0 12px rgba(39, 228, 255, 0.28);
+}
+
+.hero h1,
+.section-heading h2,
+.about-grid h1,
+.about-grid h2,
+.contact-content h2,
+.about-story-grid h2,
+.trust-card h2,
+.about-cta h2,
+.privacy-content h1,
+.no-fix-card h2 {
+    color: #f8fbff;
+}
+
+.hero h1 span,
+.about-page .about-grid h1,
+.trust-card h2 {
+    background: var(--tech-gradient);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-description,
+.section-heading p:last-child,
+.about-grid > div > p,
+.contact-content > p,
+.hero-card p,
+.service-card p,
+.cad-service-heading > p:last-child,
+.cad-price-card p,
+.process-card p,
+.pricing-details p,
+.pricing-note,
+.contact-details p,
+.about-story-content p,
+.trust-card p:not(.eyebrow),
+.privacy-content p,
+.privacy-content li,
+.no-fix-card p,
+.no-fix-card .no-fix-conditions {
+    color: var(--tech-muted);
+}
+
+.hero-points span,
+.status-row,
+.text-link,
+.price-row strong,
+.cad-price-card strong,
+.privacy-content a,
+.form-privacy a,
+.privacy-nav-link {
+    color: var(--tech-cyan);
+}
+
+.button {
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.button:hover {
+    transform: translateY(-3px);
+}
+
+.button-secondary {
+    border-color: rgba(55, 194, 255, 0.5);
+    background: rgba(9, 25, 50, 0.72);
+    color: #eaf5ff;
+    box-shadow: inset 0 0 18px rgba(36, 116, 255, 0.08);
+}
+
+.button-secondary:hover {
+    border-color: var(--tech-cyan);
+    background: rgba(16, 40, 76, 0.9);
+    box-shadow: 0 0 24px rgba(39, 228, 255, 0.15);
+}
+
+.hero-card,
+.service-card,
+.cad-service,
+.cad-price-card,
+.pricing-card,
+.pricing-highlight,
+.pricing-policy,
+.process-card,
+.contact-form,
+.feature,
+.about-info-card,
+.trust-card,
+.privacy-content,
+.no-fix-card {
+    border: 1px solid var(--tech-border);
+    background:
+        linear-gradient(145deg, rgba(15, 35, 68, 0.92), rgba(5, 13, 30, 0.86));
+    box-shadow:
+        var(--tech-shadow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.055),
+        inset 0 0 28px rgba(34, 99, 255, 0.045);
+    backdrop-filter: blur(16px);
+}
+
+.service-card,
+.cad-price-card,
+.process-card,
+.feature,
+.about-info-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.service-card::after,
+.cad-price-card::after,
+.process-card::after,
+.feature::after,
+.about-info-card::after {
+    position: absolute;
+    top: 0;
+    left: 12%;
+    width: 76%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--tech-cyan), transparent);
+    content: "";
+    opacity: 0.75;
+}
+
+.service-card:hover,
+.cad-price-card:hover,
+.process-card:hover,
+.feature:hover,
+.about-info-card:hover {
+    border-color: var(--tech-border-bright);
+    transform: translateY(-6px);
+    box-shadow:
+        0 28px 70px rgba(0, 0, 0, 0.44),
+        0 0 30px rgba(39, 228, 255, 0.13),
+        0 0 42px rgba(155, 55, 255, 0.08);
+}
+
+.service-icon,
+.trust-icon {
+    border: 1px solid rgba(54, 214, 255, 0.64);
+    background:
+        linear-gradient(145deg, rgba(14, 63, 111, 0.82), rgba(36, 19, 93, 0.88));
+    color: var(--tech-cyan);
+    box-shadow:
+        0 0 20px rgba(39, 228, 255, 0.22),
+        inset 0 0 16px rgba(49, 138, 255, 0.18);
+    text-shadow: 0 0 10px rgba(39, 228, 255, 0.7);
+}
+
+.service-card h3,
+.cad-price-card h4,
+.process-card h3,
+.pricing-details h3,
+.feature h3,
+.about-info-card h3 {
+    color: #f7fbff;
+}
+
+.service-card li,
+.price-row span,
+.price-row small {
+    color: #b7c9e2;
+}
+
+.service-card li::before {
+    color: var(--tech-cyan);
+}
+
+.cad-service {
+    background:
+        radial-gradient(circle at 50% 0%, rgba(35, 111, 255, 0.14), transparent 38%),
+        linear-gradient(145deg, rgba(10, 26, 52, 0.94), rgba(4, 11, 27, 0.9));
+}
+
+.cad-pricing-note {
+    color: #9eb8d5;
+}
+
+.cad-service .process-grid {
+    position: relative;
+}
+
+.cad-service .process-grid::before {
+    position: absolute;
+    top: 50%;
+    right: 8%;
+    left: 8%;
+    height: 1px;
+    background: var(--tech-gradient);
+    box-shadow: 0 0 14px rgba(39, 228, 255, 0.35);
+    content: "";
+    opacity: 0.45;
+}
+
+.cad-service .process-card {
+    z-index: 1;
+}
+
+.pricing-section,
+.contact-section,
+.trust-section,
+.no-fix-section {
+    background:
+        radial-gradient(circle at 15% 20%, rgba(0, 191, 255, 0.09), transparent 30%),
+        radial-gradient(circle at 90% 75%, rgba(167, 52, 255, 0.09), transparent 34%),
+        rgba(4, 10, 24, 0.64);
+}
+
+.pricing-card {
+    background: rgba(8, 20, 42, 0.88);
+}
+
+.price-row {
+    border-bottom-color: rgba(90, 143, 204, 0.2);
+}
+
+.pricing-highlight {
+    border-color: rgba(39, 228, 255, 0.55);
+}
+
+.pricing-badge {
+    background: var(--tech-gradient);
+    box-shadow: 0 0 18px rgba(39, 228, 255, 0.22);
+}
+
+.pricing-details .policy-exclusions {
+    border-top-color: rgba(90, 143, 204, 0.22);
+}
+
+.section-dark,
+.about-story-section,
+.about-cta-section {
+    background: transparent;
+}
+
+.about-page .section-dark {
+    position: relative;
+    background:
+        radial-gradient(circle at 77% 24%, rgba(69, 64, 255, 0.2), transparent 34%),
+        linear-gradient(125deg, rgba(5, 16, 35, 0.92), rgba(3, 8, 20, 0.62));
+}
+
+.about-page .section-dark::after {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(90deg, transparent 0 62%, rgba(39, 228, 255, 0.035) 62% 63%, transparent 63%),
+        linear-gradient(0deg, transparent 0 68%, rgba(104, 53, 255, 0.04) 68% 69%, transparent 69%);
+    content: "";
+}
+
+.about-page .about-grid {
+    position: relative;
+    z-index: 1;
+}
+
+.feature {
+    border-color: rgba(56, 171, 255, 0.48);
+}
+
+.feature:nth-child(2) {
+    border-color: rgba(70, 110, 255, 0.55);
+}
+
+.feature:nth-child(3) {
+    border-color: rgba(196, 60, 255, 0.62);
+}
+
+.feature > span,
+.process-card > span {
+    background: var(--tech-gradient);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 18px rgba(39, 228, 255, 0.16);
+}
+
+.about-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.about-info-card {
+    padding: 30px;
+    border-radius: 18px;
+}
+
+.about-info-card h3 {
+    margin-bottom: 16px;
+    font-size: 1.3rem;
+}
+
+.about-info-card p {
+    color: var(--tech-muted);
+}
+
+.about-info-card p + p {
+    margin-top: 16px;
+}
+
+.about-info-card strong {
+    color: #f3f8ff;
+}
+
+.trust-card {
+    border-color: rgba(102, 91, 255, 0.6);
+    background:
+        radial-gradient(circle at 92% 30%, rgba(172, 52, 255, 0.16), transparent 35%),
+        radial-gradient(circle at 8% 75%, rgba(0, 207, 255, 0.12), transparent 30%),
+        linear-gradient(135deg, rgba(14, 34, 67, 0.96), rgba(5, 12, 29, 0.96));
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.45),
+        0 0 42px rgba(72, 76, 255, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.about-cta > p {
+    color: var(--tech-cyan);
+    text-shadow: 0 0 16px rgba(39, 228, 255, 0.3);
+}
+
+.contact-form input,
+.contact-form select,
+.contact-form textarea {
+    border-color: rgba(72, 145, 216, 0.42);
+    background: rgba(2, 9, 22, 0.76);
+    color: #f4f8ff;
+}
+
+.contact-form select option {
+    background: #081329;
+    color: #f4f8ff;
+}
+
+.contact-form input:focus,
+.contact-form select:focus,
+.contact-form textarea:focus {
+    border-color: var(--tech-cyan);
+    box-shadow: 0 0 0 3px rgba(39, 228, 255, 0.13);
+}
+
+.form-group label {
+    color: #dceaff;
+}
+
+.privacy-page {
+    background: var(--tech-bg);
+}
+
+.privacy-content {
+    background:
+        linear-gradient(145deg, rgba(12, 29, 58, 0.96), rgba(5, 13, 29, 0.96));
+}
+
+.privacy-content h2 {
+    color: #f4f8ff;
+}
+
+.privacy-updated {
+    color: #92abc8;
+}
+
+.site-footer {
+    border-top: 1px solid rgba(39, 228, 255, 0.2);
+    background: rgba(2, 6, 15, 0.96);
+    color: #9eb2cc;
+}
+
+.footer-links a {
+    color: #b8cae2;
+}
+
+.footer-links a:hover {
+    color: var(--tech-cyan);
+}
+
+@keyframes ambient-glow {
+    0%, 100% {
+        opacity: 0.72;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.025);
+    }
+}
+
+.hero::after {
+    animation: ambient-glow 9s ease-in-out infinite;
+}
+
+@media (max-width: 900px) {
+    .nav-links {
+        border-bottom-color: rgba(39, 228, 255, 0.28);
+        background: rgba(4, 11, 25, 0.98);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(18px);
+    }
+
+    .nav-links a:not(.nav-contact)::after {
+        right: auto;
+        bottom: 5px;
+        width: 36px;
+    }
+
+    .about-info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    body::before {
+        background-size: 70px 70px, 70px 70px, 220px 220px;
+        opacity: 0.65;
+    }
+
+    .logo {
+        padding: 3px 6px;
+        border-radius: 9px;
+    }
+
+    .cad-service .process-grid::before {
+        display: none;
+    }
+
+    .hero-card,
+    .service-card,
+    .cad-service,
+    .cad-price-card,
+    .pricing-card,
+    .pricing-highlight,
+    .pricing-policy,
+    .process-card,
+    .contact-form,
+    .feature,
+    .about-info-card,
+    .trust-card,
+    .privacy-content,
+    .no-fix-card {
+        backdrop-filter: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ------------------------------
    NO FIX, NO REPAIR FEE
 ------------------------------ */
 

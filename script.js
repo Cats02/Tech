@@ -44,6 +44,47 @@ if (menuButton && navLinks) {
 }
 
 // =====================================
+// Highlight the Current Homepage Section
+// =====================================
+
+const homepageSections = document.querySelectorAll("main section[id]");
+const homepageNavLinks = document.querySelectorAll(
+    '.nav-links a[href^="#"]'
+);
+
+if (homepageSections.length && homepageNavLinks.length) {
+    const sectionObserver = new IntersectionObserver(
+        (entries) => {
+            const visibleSection = entries
+                .filter((entry) => entry.isIntersecting)
+                .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+            if (!visibleSection) {
+                return;
+            }
+
+            homepageNavLinks.forEach((link) => {
+                const isCurrent =
+                    link.getAttribute("href") ===
+                    `#${visibleSection.target.id}`;
+
+                if (isCurrent) {
+                    link.setAttribute("aria-current", "location");
+                } else {
+                    link.removeAttribute("aria-current");
+                }
+            });
+        },
+        {
+            rootMargin: "-25% 0px -60% 0px",
+            threshold: [0, 0.15, 0.35]
+        }
+    );
+
+    homepageSections.forEach((section) => sectionObserver.observe(section));
+}
+
+// =====================================
 // Display Current Year in Footer
 // =====================================
 
