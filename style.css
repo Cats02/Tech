@@ -437,6 +437,33 @@ img {
     text-align: center;
 }
 
+.cad-preview-price {
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 13px 22px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid rgba(39, 228, 255, 0.42);
+    border-radius: 999px;
+    background: linear-gradient(120deg, rgba(39, 228, 255, 0.08), rgba(196, 60, 255, 0.08));
+    box-shadow: 0 0 24px rgba(36, 116, 255, 0.12);
+    color: var(--tech-text, #f4f8ff);
+    text-align: center;
+}
+
+.cad-preview-price strong {
+    font-size: 1rem;
+}
+
+.cad-preview-price span {
+    color: var(--tech-cyan, #27e4ff);
+    text-shadow: 0 0 10px rgba(39, 228, 255, 0.7);
+}
+
 
 /* ------------------------------
    PRICING
@@ -1085,6 +1112,16 @@ img {
     .cad-service {
         margin-top: 40px;
         padding: 32px 22px;
+    }
+
+    .cad-preview-price {
+        flex-direction: column;
+        gap: 4px;
+        border-radius: 18px;
+    }
+
+    .cad-preview-price span {
+        display: none;
     }
 
     .hero h1 {
