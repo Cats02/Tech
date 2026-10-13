@@ -780,6 +780,24 @@ img {
     color: #465269;
 }
 
+.contact-phone span,
+.footer-phone span {
+    margin-right: 5px;
+    color: var(--tech-cyan, #246bfd);
+}
+
+.contact-phone a,
+.footer-phone {
+    color: var(--tech-cyan, #246bfd);
+    font-weight: 700;
+}
+
+.contact-phone a:hover,
+.footer-phone:hover {
+    color: #ffffff;
+    text-shadow: 0 0 12px rgba(39, 228, 255, 0.45);
+}
+
 .contact-form {
     padding: 34px;
     border-radius: 18px;
@@ -960,6 +978,15 @@ img {
     gap: 20px;
 }
 
+.footer-business {
+    display: grid;
+    gap: 8px;
+}
+
+.footer-phone {
+    width: fit-content;
+}
+
 .footer-links {
     display: flex;
     flex-wrap: wrap;
@@ -1077,6 +1104,10 @@ img {
     .footer-content {
         flex-direction: column;
         text-align: center;
+    }
+
+    .footer-phone {
+        margin: 0 auto;
     }
 }
 
