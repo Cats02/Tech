@@ -1962,3 +1962,32 @@ html { scroll-padding-bottom: 84px; }
         animation: none !important; transition: none !important; scroll-behavior: auto !important;
     }
 }
+
+/* Text scaling uses the root font size so existing rem typography scales together. */
+.accessibility-size-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.accessibility-size-controls button {
+    flex: 1; min-width: 44px; min-height: 44px; padding: 6px;
+    border: 1px solid var(--tech-border-bright); border-radius: 8px;
+    background: var(--tech-bg); color: var(--tech-text); font-size: 16px;
+}
+.accessibility-size-controls button[aria-disabled="true"] { opacity: .5; cursor: default; }
+.accessibility-size-controls output { min-width: 42px; text-align: center; font-size: 12px; color: var(--tech-muted); }
+html[data-text-size] :is(main, .site-header, .site-footer) { overflow-wrap: anywhere; }
+html[data-text-size] :is(main, .navbar, .footer-content) > * { min-width: 0; }
+html[data-text-size] :is(.hero-grid,.services-grid,.cad-services-grid,.process-grid,.about-grid,.contact-grid,.about-story-grid) > * { min-width: 0; }
+html[data-text-size] :is(.button,.nav-contact) { white-space: normal; text-align: center; }
+html[data-text-size] .nav-links { flex-wrap: wrap; }
+html[data-text-size] .navbar { padding-block: 8px; }
+html[data-text-size] .price-row { grid-template-columns: minmax(0, 1fr) minmax(0, auto); }
+html[data-text-size] .nav-links.active { max-height: 75dvh; overflow-y: auto; }
+@media (min-width: 901px) {
+    html[data-text-size="120"] .navbar,
+    html[data-text-size="130"] .navbar,
+    html[data-text-size="140"] .navbar { flex-wrap: wrap; }
+    html[data-text-size="120"] .nav-links,
+    html[data-text-size="130"] .nav-links,
+    html[data-text-size="140"] .nav-links { flex: 1 1 100%; justify-content: center; margin-left: 0; }
+}
+@media (max-width: 600px) {
+    html[data-text-size] .price-row { grid-template-columns: minmax(0, 1fr); }
+}

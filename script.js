@@ -2,16 +2,18 @@
 (() => {
     const key = "everbright-accessibility";
     const modes = ["default", "protanopia", "deuteranopia", "tritanopia", "high-contrast"];
+    const textSizes = [90, 100, 110, 120, 130, 140];
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    let settings = { colour: "default", motion: null };
+    let settings = { colour: "default", motion: null, textSize: 100 };
     function read() {
         try {
             const saved = JSON.parse(localStorage.getItem(key));
             settings = {
                 colour: modes.includes(saved?.colour) ? saved.colour : "default",
-                motion: typeof saved?.motion === "boolean" ? saved.motion : null
+                motion: typeof saved?.motion === "boolean" ? saved.motion : null,
+                textSize: textSizes.includes(saved?.textSize) ? saved.textSize : 100
             };
-        } catch { settings = { colour: "default", motion: null }; }
+        } catch { settings = { colour: "default", motion: null, textSize: 100 }; }
     }
     read();
     const widget = document.createElement("div");
@@ -27,6 +29,14 @@
         <section id="accessibility-panel" class="accessibility-panel" aria-labelledby="accessibility-title" hidden>
             <div class="accessibility-heading"><h2 id="accessibility-title">Accessibility Settings</h2>
                 <button type="button" class="accessibility-close" aria-label="Close Accessibility Settings">×</button></div>
+            <fieldset class="accessibility-text-size"><legend>Text Size</legend>
+                <div class="accessibility-size-controls">
+                    <button type="button" data-text-size="decrease" aria-label="Decrease website text size">A−</button>
+                    <button type="button" data-text-size="default" aria-label="Restore default website text size (100%)">A</button>
+                    <button type="button" data-text-size="increase" aria-label="Increase website text size">A+</button>
+                    <output id="accessibility-size-value" aria-live="polite" aria-atomic="true" aria-label="Website text size">100%</output>
+                </div>
+            </fieldset>
             <label for="accessibility-colour">Colour Vision</label>
             <select id="accessibility-colour">
                 <option value="default">Default</option><option value="protanopia">Protanopia</option>
@@ -43,7 +53,14 @@
     const panel = widget.querySelector(".accessibility-panel");
     const colour = widget.querySelector("select");
     const motion = widget.querySelector("input");
+    const decrease = widget.querySelector('[data-text-size="decrease"]');
+    const increase = widget.querySelector('[data-text-size="increase"]');
     function apply() {
+        document.documentElement.style.fontSize = `${settings.textSize}%`;
+        document.documentElement.dataset.textSize = String(settings.textSize);
+        widget.querySelector("output").textContent = `${settings.textSize}%`;
+        decrease.setAttribute("aria-disabled", String(settings.textSize === textSizes[0]));
+        increase.setAttribute("aria-disabled", String(settings.textSize === textSizes[textSizes.length - 1]));
         document.documentElement.dataset.colourVision = settings.colour;
         const reduced = settings.motion ?? preference.matches;
         document.documentElement.dataset.reduceMotion = String(reduced);
@@ -63,13 +80,22 @@
         if (!panel.hidden) return close(true);
         panel.hidden = false;
         launcher.setAttribute("aria-expanded", "true");
-        colour.focus();
+        decrease.focus();
     });
     widget.querySelector(".accessibility-close").addEventListener("click", () => close(true));
     colour.addEventListener("change", () => { settings.colour = colour.value; save(); });
     motion.addEventListener("change", () => { settings.motion = motion.checked; save(); });
+    widget.querySelectorAll("[data-text-size]").forEach(button => {
+        button.addEventListener("click", () => {
+            const action = button.dataset.textSize;
+            const index = textSizes.indexOf(settings.textSize);
+            settings.textSize = action === "default" ? 100 :
+                textSizes[Math.max(0, Math.min(textSizes.length - 1, index + (action === "increase" ? 1 : -1)))];
+            save();
+        });
+    });
     widget.querySelector(".accessibility-reset").addEventListener("click", () => {
-        settings = { colour: "default", motion: null };
+        settings = { colour: "default", motion: null, textSize: 100 };
         save();
     });
     document.addEventListener("pointerdown", event => {
