@@ -1,3 +1,91 @@
+// Shared accessibility controls: include this script and style.css on every page.
+(() => {
+    const key = "everbright-accessibility";
+    const modes = ["default", "protanopia", "deuteranopia", "tritanopia", "high-contrast"];
+    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let settings = { colour: "default", motion: null };
+    function read() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(key));
+            settings = {
+                colour: modes.includes(saved?.colour) ? saved.colour : "default",
+                motion: typeof saved?.motion === "boolean" ? saved.motion : null
+            };
+        } catch { settings = { colour: "default", motion: null }; }
+    }
+    read();
+    const widget = document.createElement("div");
+    widget.className = "accessibility-widget";
+    widget.innerHTML = `
+        <button type="button" class="accessibility-launcher" aria-label="Accessibility Settings"
+            title="Accessibility Settings" aria-expanded="false" aria-controls="accessibility-panel">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false">
+                <circle cx="12" cy="12" r="10"/><circle cx="12" cy="6.5" r="1.3" fill="currentColor" stroke="none"/>
+                <path d="M5.5 10 12 11l6.5-1M12 11v4m0 0-3 4m3-4 3 4" stroke-linecap="round"/>
+            </svg>
+        </button>
+        <section id="accessibility-panel" class="accessibility-panel" aria-labelledby="accessibility-title" hidden>
+            <div class="accessibility-heading"><h2 id="accessibility-title">Accessibility Settings</h2>
+                <button type="button" class="accessibility-close" aria-label="Close Accessibility Settings">×</button></div>
+            <label for="accessibility-colour">Colour Vision</label>
+            <select id="accessibility-colour">
+                <option value="default">Default</option><option value="protanopia">Protanopia</option>
+                <option value="deuteranopia">Deuteranopia</option><option value="tritanopia">Tritanopia</option>
+                <option value="high-contrast">High Contrast</option>
+            </select>
+            <fieldset><legend>Motion</legend><label class="accessibility-motion" for="accessibility-motion">
+                <input type="checkbox" role="switch" id="accessibility-motion" aria-describedby="accessibility-motion-note"> Reduce Motion
+            </label><p id="accessibility-motion-note">Follows your device setting until changed. Reset restores this.</p></fieldset>
+            <button type="button" class="accessibility-reset">Reset Settings</button>
+        </section>`;
+    document.body.append(widget);
+    const launcher = widget.querySelector(".accessibility-launcher");
+    const panel = widget.querySelector(".accessibility-panel");
+    const colour = widget.querySelector("select");
+    const motion = widget.querySelector("input");
+    function apply() {
+        document.documentElement.dataset.colourVision = settings.colour;
+        const reduced = settings.motion ?? preference.matches;
+        document.documentElement.dataset.reduceMotion = String(reduced);
+        colour.value = settings.colour;
+        motion.checked = reduced;
+    }
+    function save() {
+        try { localStorage.setItem(key, JSON.stringify(settings)); } catch { /* Settings still work when storage is unavailable. */ }
+        apply();
+    }
+    function close(restoreFocus = false) {
+        panel.hidden = true;
+        launcher.setAttribute("aria-expanded", "false");
+        if (restoreFocus) launcher.focus();
+    }
+    launcher.addEventListener("click", () => {
+        if (!panel.hidden) return close(true);
+        panel.hidden = false;
+        launcher.setAttribute("aria-expanded", "true");
+        colour.focus();
+    });
+    widget.querySelector(".accessibility-close").addEventListener("click", () => close(true));
+    colour.addEventListener("change", () => { settings.colour = colour.value; save(); });
+    motion.addEventListener("change", () => { settings.motion = motion.checked; save(); });
+    widget.querySelector(".accessibility-reset").addEventListener("click", () => {
+        settings = { colour: "default", motion: null };
+        save();
+    });
+    document.addEventListener("pointerdown", event => {
+        if (!panel.hidden && !widget.contains(event.target)) close(panel.contains(document.activeElement));
+    });
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && !panel.hidden) { event.preventDefault(); close(true); }
+    });
+    widget.addEventListener("focusout", event => {
+        if (!widget.contains(event.relatedTarget)) close();
+    });
+    preference.addEventListener("change", apply);
+    window.addEventListener("storage", event => { if (event.key === key || event.key === null) { read(); apply(); } });
+    apply();
+})();
+
 // =====================================
 // Mobile Navigation Menu
 // =====================================
