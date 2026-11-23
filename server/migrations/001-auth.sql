@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS admin_users (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(254) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    last_login_at DATETIME(3) NULL
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+    data MEDIUMTEXT NOT NULL,
+    expires_at BIGINT NOT NULL,
+    INDEX sessions_expiry (expires_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+    bucket CHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+    hits INT UNSIGNED NOT NULL,
+    expires_at BIGINT NOT NULL,
+    INDEX rate_limit_expiry (expires_at)
+) ENGINE=InnoDB;
