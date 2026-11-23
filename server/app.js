@@ -20,6 +20,9 @@ export function createApp({ config, repository, sessionStore }) {
     app.disable('x-powered-by');
     app.set('trust proxy', config.proxyHops || false);
     app.use(helmet({
+        // Preserve same-origin form metadata. no-referrer can make browsers send
+        // Origin: null on form POSTs, which our CSRF origin check correctly rejects.
+        referrerPolicy: { policy: 'same-origin' },
         contentSecurityPolicy: { directives: {
             defaultSrc: ["'self'"], scriptSrc: ["'self'", 'https://www.googletagmanager.com', ...analyticsHashes],
             styleSrc: ["'self'"], styleSrcAttr: ["'unsafe-inline'"],

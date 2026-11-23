@@ -62,6 +62,7 @@ test('login rotates session, dashboard is protected and logout invalidates it', 
     const dashboard = await agent.get('/admin');
     assert.equal(dashboard.status, 200);
     assert.equal(dashboard.headers['cache-control'], 'no-store');
+    assert.equal(dashboard.headers['referrer-policy'], 'same-origin');
     assert.match(dashboard.headers['content-security-policy'], /frame-ancestors 'none'/);
     assert.doesNotMatch(dashboard.text, /googletagmanager/);
     assert.equal((await agent.post('/admin/logout').type('form').send({ _csrf: token(form) })).status, 403);
@@ -72,7 +73,7 @@ test('bad credentials are generic and login limits fail closed', async () => {
     const agent = request.agent(fixture());
     const form = await agent.get('/admin/login');
     for (const email of ['unknown@example.test', 'admin@example.test', "' OR 1=1 --"]) {
-        const response = await agent.post('/admin/login').type('form').send({ _csrf: token(form), email, password: 'wrong' });
+        const response = await agent.post('/admin/login').set('Origin', config.origin).type('form').send({ _csrf: token(form), email, password: 'wrong' });
         assert.equal(response.status, 401); assert.match(response.text, /Email or password is incorrect/);
     }
     const limited = request.agent(fixture({ limited: true }));
