@@ -5,6 +5,8 @@ import { createPool } from '../server/db.js';
 import { migrate } from '../server/migrate.js';
 import { createRepository, MySQLSessionStore } from '../server/store.js';
 import { createServiceRepository, validateService } from '../server/services.js';
+import { createBookingRepository, validateBooking } from '../server/bookings.js';
+import { adelaideLocal } from '../server/booking-time.js';
 
 test('MySQL migrations, persistent sessions and atomic rate limits', async () => {
     if (process.env.ALLOW_TEST_DATABASE !== 'true' || !process.env.DB_NAME?.endsWith('_test')) {
@@ -29,7 +31,7 @@ test('MySQL migrations, persistent sessions and atomic rate limits', async () =>
         assert.ok((await services.list()).length >= 17);
         const email = `${sid}@example.test`;
         const [insert] = await pool.execute('INSERT INTO admin_users (email, password_hash) VALUES (?, ?)', [email, 'TEST-ONLY-NOT-A-LOGIN-HASH']);
-        let serviceId;
+        let serviceId,customerId;
         try {
             const validated = validateService({name:`Integration ${sid}`,short_description:"Customer's <script> text",full_description:'',home_note:'',
                 category:'support',price_type:'from',billing_unit:'item',amount:'45.00',duration_minutes:'60',sort_order:'999',version:'0'});
@@ -51,8 +53,27 @@ test('MySQL migrations, persistent sessions and atomic rate limits', async () =>
             ]);
             assert.equal(attempts.filter(a=>a.status==='fulfilled').length,1);
             assert.equal(attempts.filter(a=>a.status==='rejected' && a.reason.status===409).length,1);
+            const latest=await services.get(serviceId);
+            await services.save(serviceId,{...validated.value,amount_cents:5500,visible:true,online_booking:true,appointment_types:'Remote',version:latest.version},insert.insertId);
+            const available=await services.get(serviceId);
+            const local=adelaideLocal(new Date(Date.now()+2*86400000));
+            const checked=validateBooking({name:'Booking integration',email,phone:'0412345678',appointment_type:'Remote',description:'Test request',
+                preferred_date:local.slice(0,10),preferred_time:local.slice(11),terms:'1'},available);
+            assert.deepEqual(checked.errors,[]);
+            const bookings=createBookingRepository(pool);
+            const key=`${sid}-booking`.padEnd(64,'0');
+            const bookingId=await bookings.submit(serviceId,checked.value,key);
+            assert.equal(await bookings.submit(serviceId,checked.value,key),bookingId);
+            const booking=await bookings.get(bookingId);customerId=booking.customer_id;
+            assert.equal(booking.status,'PENDING');assert.equal(booking.amount_cents,5500);
+            await services.save(serviceId,{...validated.value,amount_cents:9900,visible:true,online_booking:true,appointment_types:'Remote',version:available.version},insert.insertId);
+            const second=await bookings.submit(serviceId,checked.value,`${sid}-second`.padEnd(64,'0'));
+            const secondBooking=await bookings.get(second);
+            assert.equal(secondBooking.customer_id,customerId);assert.equal(secondBooking.amount_cents,9900);
+            assert.equal((await bookings.get(bookingId)).amount_cents,5500);
         } finally {
-            if(serviceId){await pool.execute('DELETE FROM price_history WHERE service_id = ?',[serviceId]);await pool.execute('DELETE FROM services WHERE id = ?',[serviceId]);}
+            if(serviceId){await pool.execute('DELETE FROM bookings WHERE service_id = ?',[serviceId]);await pool.execute('DELETE FROM price_history WHERE service_id = ?',[serviceId]);await pool.execute('DELETE FROM services WHERE id = ?',[serviceId]);}
+            if(customerId)await pool.execute('DELETE FROM customers WHERE id = ?',[customerId]);
             await pool.execute('DELETE FROM admin_users WHERE id = ?',[insert.insertId]);
         }
     } finally { await pool.end(); }

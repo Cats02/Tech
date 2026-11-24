@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { verifyPassword } from './passwords.js';
 import { loginPage, dashboardPage, layout } from './views.js';
 import { renderPublicServices, serviceListPage, serviceEditPage, validateService } from './services.js';
+import { bookable, validateBooking, bookingFormPage, receivedPage, bookingTermsPage, bookingListPage, bookingDetailPage } from './bookings.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const publicPages = ['index.html', 'about.html', 'privacy.html', 'cad-3d-printing.html', 'website-development.html'];
@@ -15,9 +16,10 @@ const analyticsHashes = [...new Set(publicPages.flatMap(page =>
     [...readFileSync(`${root}${page}`, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
         .filter(match => match[1].trim()).map(match => `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`)
 ))];
-export function createApp({ config, repository, sessionStore, serviceRepository }) {
+export function createApp({ config, repository, sessionStore, serviceRepository, bookingRepository }) {
     if (!sessionStore) throw new Error('A persistent session store is required.');
     if (!serviceRepository) throw new Error('A service database repository is required.');
+    if (!bookingRepository) throw new Error('A booking database repository is required.');
     const app = express();
     app.disable('x-powered-by');
     app.set('trust proxy', config.proxyHops || false);
@@ -47,27 +49,33 @@ export function createApp({ config, repository, sessionStore, serviceRepository 
     };
     app.get('/', sendPublicPage('index.html'));
     for (const page of publicPages) app.get(`/${page}`, sendPublicPage(page));
+    app.get('/booking-terms', (req,res)=>res.send(bookingTermsPage()));
 
-    app.use('/admin', helmet.contentSecurityPolicy({ directives: {
+    app.use(['/admin','/book'], helmet.contentSecurityPolicy({ directives: {
         defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'"],
         // Existing text-size controls set a style attribute; external stylesheet/script sources remain restricted.
         styleSrcAttr: ["'unsafe-inline'"], imgSrc: ["'self'"], connectSrc: ["'self'"],
         formAction: ["'self'"], frameAncestors: ["'none'"], objectSrc: ["'none'"],
         baseUri: ["'none'"], upgradeInsecureRequests: config.production ? [] : null
     } }));
-    app.use('/admin', (req, res, next) => {
+    app.use(['/admin','/book'], (req, res, next) => {
         res.set('Cache-Control', 'no-store'); res.set('X-Robots-Tag', 'noindex, nofollow');
         if (config.production && !req.secure) return res.status(400).send('HTTPS is required.');
         next();
     });
-    app.use('/admin', express.urlencoded({ extended: false, limit: '32kb', parameterLimit: 60 }));
+    app.use('/book', async (req,res,next)=>{
+        const allowed=await repository.consumeRateLimit(`booking-${req.method}:${req.ip}`,req.method==='POST'?10:100,15*60*1000);
+        if(!allowed){res.set('Retry-After','900');return res.status(429).send(layout('Please try again later','<p>Too many requests. Please wait 15 minutes or contact us directly.</p>'));}
+        next();
+    });
+    app.use(['/admin','/book'], express.urlencoded({ extended: false, limit: '32kb', parameterLimit: 60 }));
     const cookieName = config.production ? '__Host-everbright.sid' : 'everbright.sid';
-    app.use('/admin', session({
+    app.use(['/admin','/book'], session({
         name: cookieName, secret: config.secret, store: sessionStore,
         resave: false, saveUninitialized: false,
         cookie: { httpOnly: true, secure: config.production, sameSite: 'strict', path: '/', maxAge: 4 * 60 * 60 * 1000 }
     }));
-    app.use('/admin', (req, res, next) => {
+    app.use(['/admin','/book'], (req, res, next) => {
         req.session.csrf ||= randomBytes(32).toString('hex');
         if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
         const token = req.body?._csrf;
@@ -78,6 +86,37 @@ export function createApp({ config, repository, sessionStore, serviceRepository 
         }
         next();
     });
+    function requestKey(req){
+        const key=randomBytes(32).toString('hex');
+        req.session.bookingKeys=[...(req.session.bookingKeys||[]).slice(-4),key];
+        return key;
+    }
+    app.get('/book',async(req,res)=>{
+        const services=await serviceRepository.list(true);
+        const selected=services.find(s=>String(s.id)===req.query.service&&bookable(s));
+        res.send(bookingFormPage(services,selected,req.session.csrf,selected?requestKey(req):''));
+    });
+    app.post('/book',async(req,res)=>{
+        const services=await serviceRepository.list(true);
+        const selected=services.find(s=>String(s.id)===req.body.service_id);
+        const key=req.body.submission_key;
+        if(typeof key!=='string'||!req.session.bookingKeys?.includes(key))return res.status(403).send(layout('Request rejected','<p>Reload the booking form and try again.</p>'));
+        const result=validateBooking(req.body,selected);
+        if(result.errors.length)return res.status(422).send(bookingFormPage(services,bookable(selected)?selected:null,req.session.csrf,key,req.body,result.errors));
+        if(!await repository.consumeRateLimit(`booking-contact:${result.value.email}:${result.value.phone}`,5,60*60*1000)){
+            res.set('Retry-After','3600');return res.status(429).send(bookingFormPage(services,selected,req.session.csrf,key,req.body,['Too many booking requests. Please wait an hour or contact us directly.']));
+        }
+        try{
+            await bookingRepository.submit(selected.id,result.value,key);
+            req.session.bookingReceived=true;
+            await new Promise((resolve,reject)=>req.session.save(error=>error?reject(error):resolve()));
+            res.redirect(303,'/book/received');
+        }catch(error){
+            if(error.status!==409)throw error;
+            res.status(409).send(bookingFormPage(services,selected,req.session.csrf,key,req.body,[error.message]));
+        }
+    });
+    app.get('/book/received',(req,res)=>req.session.bookingReceived?res.send(receivedPage()):res.redirect(303,'/book'));
     app.get('/admin/login', (req, res) => res.send(loginPage(req.session.csrf)));
     app.post('/admin/login', async (req, res) => {
         const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
@@ -110,7 +149,14 @@ export function createApp({ config, repository, sessionStore, serviceRepository 
         res.clearCookie(cookieName, { path: '/', httpOnly: true, sameSite: 'strict', secure: config.production });
         res.redirect(303, '/admin/login');
     });
-    app.get('/admin', (req, res) => res.send(dashboardPage(req.admin, req.session.csrf)));
+    app.get('/admin', async (req, res) => res.send(dashboardPage(req.admin, req.session.csrf,await bookingRepository.pendingCount())));
+    app.get('/admin/bookings',async(req,res)=>res.send(bookingListPage(await bookingRepository.list(),req.session.csrf)));
+    app.get('/admin/bookings/:id',async(req,res)=>{
+        if(!/^[1-9]\d{0,18}$/.test(req.params.id))return res.status(404).send('Booking not found.');
+        const row=await bookingRepository.get(req.params.id);
+        if(!row)return res.status(404).send('Booking not found.');
+        res.send(bookingDetailPage(row,req.session.csrf));
+    });
     app.get('/admin/services', async (req, res) => res.send(serviceListPage(await serviceRepository.list(), req.session.csrf)));
     app.get('/admin/services/new', (req, res) => res.send(serviceEditPage(null, [], req.session.csrf)));
     app.get('/admin/services/:id', async (req, res) => {

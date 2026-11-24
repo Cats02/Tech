@@ -59,7 +59,7 @@ function fixture() {
     const admin={id:1,email:'admin@example.test',password_hash:hash};
     const app=createApp({config:{production:false,secret:'s'.repeat(64),origin:'http://localhost:3000',proxyHops:0},
         repository:{findAdmin:async()=>admin,getAdmin:async()=>admin,recordLogin:async()=>{},consumeRateLimit:async()=>true},
-        sessionStore:new session.MemoryStore(),serviceRepository:services});
+        sessionStore:new session.MemoryStore(),serviceRepository:services,bookingRepository:{pendingCount:async()=>0}});
     return {app,row,history};
 }
 const csrf=r=>r.text.match(/name="_csrf" value="([a-f0-9]+)"/)[1];
@@ -82,7 +82,7 @@ test('service edits require login and CSRF, update public pricing and record his
 });
 test('price pages do not silently serve old HTML prices on database failure', async () => {
     const app=createApp({config:{production:false,secret:'s'.repeat(64),origin:'http://localhost:3000'},repository:{},sessionStore:new session.MemoryStore(),
-        serviceRepository:{list:async()=>{throw new Error('database unavailable');}}});
+        serviceRepository:{list:async()=>{throw new Error('database unavailable');}},bookingRepository:{pendingCount:async()=>0}});
     const response=await request(app).get('/');
     assert.equal(response.status,500);assert.doesNotMatch(response.text,/From \$45/);
     assert.equal((await request(app).get('/about.html')).status,200);

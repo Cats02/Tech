@@ -21,3 +21,9 @@
 .admin-notice { padding: 16px; margin-bottom: 20px; border: 1px solid var(--tech-border-bright); border-radius: 8px; }
 .admin-notice ul, .admin-history ul { padding-left: 24px; }
 .admin-history { margin-top: 32px; overflow-wrap: anywhere; }
+.booking-form { margin-top: 24px; }
+.booking-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.booking-details dt { font-weight: bold; margin-top: 16px; }
+.booking-details dd { margin-bottom: 10px; overflow-wrap: anywhere; }
+.booking-form a { text-decoration: underline; text-underline-offset: .15em; }
+.booking-form fieldset { margin-bottom: 16px; }

@@ -1,6 +1,6 @@
 # Everbright Digital
 
-Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–2 add secure administrator authentication and database-backed services/pricing. Booking requests, calendar, customer records and email are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
+Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–3 add secure administrator authentication, database-backed services/pricing and pending customer booking requests. Approval controls, calendar, customer management and email are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
 
 ## Requirements
 
@@ -58,7 +58,7 @@ Before production: run both suites, dependency auditing, mobile/keyboard checks 
 
 1. Backend/MySQL migrations and secure admin authentication (implemented).
 2. Editable services/pricing, historical prices and public rendering (implemented).
-3. Pending-only booking requests and customer association.
+3. Pending-only booking requests and customer association (implemented).
 4. Manual approval, proposals, decline/cancel/complete and history.
 5. Calendar, weekly availability, blocked periods and transactional overlap prevention.
 6. Customer management.
@@ -80,3 +80,19 @@ Prices use integer AUD cents. From + hourly unit preserves existing “From $70 
 Seeded services start with online booking disabled, no appointment types, and a provisional 60-minute duration. Review these values before enabling booking when Phase 3 is available. Enabling this field in Phase 2 does not create a public booking form yet.
 
 Phase 2 verification: `npm test` covers validation, price formatting, escaping, public rendering, protected edits, CSRF, price-history rendering, stale forms and authentication. `npm run test:database` additionally exercises real service persistence, audit writes and concurrent edits, and still requires a disposable `_test` database. Browser checks should include all public pages and the editor at mobile widths, larger text settings and keyboard operation.
+
+## Phase 3 deployment and booking requests
+
+Before pushing Phase 3 to the auto-deployed branch, import `server/migrations/003-booking-requests.sql` into the same staging database using phpMyAdmin, or run `npm run migrate` in a configured SSH shell. This creates customers/bookings without altering existing admin/services records. No new environment variables or dependencies are required. Startup requires the new tables. A successful manual SQL import verifies table creation, but does not replace testing the application submission and review paths.
+
+After deployment, edit an appropriate service in Services & Pricing: review its duration, select allowed appointment types and enable online booking. Services must be visible, booking-enabled and have at least one valid appointment type to appear at `/book`. Seeded services remain booking-disabled until you do this. Existing public navigation and homepage gain Book an Appointment links. The existing Formspree enquiry form still works separately.
+
+Customers first choose a service, then enter details and preferences. This two-step form works without JavaScript, shows only that service's appointment types and avoids putting personal details into URLs. On-site requests require a service address/suburb. Dates use Australia/Adelaide time and must be future dates within one year. DST gaps and repeated wall times are rejected. Both date and time are required for an optional second preference.
+
+Every submitted request is PENDING, regardless of extra client-supplied status/price fields. A transaction associates customers by normalised email plus phone, stores a service/price/duration snapshot, and records the accepted booking-terms version. Australian mobile numbers in 04… and +614… forms normalise to the same number. Existing customer profile details are not blindly overwritten: each booking separately retains the submitted name/contact/address. Repeated submissions of the same issued form key return the same request rather than inserting duplicates. Initial keys are bound to the session and expire with it.
+
+The receipt page is generic and contains no customer data or public booking lookup ID. Customer and booking data can only be viewed under authenticated `/admin/bookings` routes. Dashboard links show the pending request count. This phase includes read-only admin review; ACCEPT, propose-time and other status actions arrive in Phase 4. Calendar/availability enforcement arrives in Phase 5: the current form collects explicitly labelled preferences, not available or reserved slots. Do not advertise automatic confirmation.
+
+Form POSTs require CSRF and same-origin checks, plus session-bound submission keys. Shared MySQL rate limits cover GETs and POSTs by IP, and valid submissions by normalised contact. A honeypot catches basic spam. Database errors never display a successful receipt. Public booking forms and admin pages have no third-party analytics scripts. The existing privacy page now describes the booking database; booking terms are at `/booking-terms`. Mail delivery is not implemented until Phase 7; the receipt clearly says no confirmation email is sent at this stage. Operators should check the admin queue and contact customers using the existing business communication channels.
+
+Verification: `npm test` covers timezones, validation, allowed services/types, consent, on-site addresses, XSS escaping, CSRF, private records, retry handling, rate limits and rollback on failed storage. `npm run test:database` additionally verifies real booking persistence, customer deduplication, snapshots and idempotency in a disposable `_test` database. Check a genuine test request in staging before accepting customer use; do not submit real customer data to disposable tests.

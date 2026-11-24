@@ -97,11 +97,11 @@ export function createServiceRepository(pool) {
 }
 
 export function adminNav(csrf) {
-    return `<nav class="admin-nav" aria-label="Admin navigation"><a href="/admin">Dashboard</a><a href="/admin/services">Services &amp; Pricing</a>
+    return `<nav class="admin-nav" aria-label="Admin navigation"><a href="/admin">Dashboard</a><a href="/admin/bookings">Bookings</a><a href="/admin/services">Services &amp; Pricing</a>
         <form action="/admin/logout" method="post"><input type="hidden" name="_csrf" value="${escape(csrf)}"><button type="submit">Log Out</button></form></nav>`;
 }
 export function serviceListPage(rows, csrf) {
-    return layout('Services & Pricing', `${adminNav(csrf)}<p class="admin-notice">Prices are in AUD. Online booking requests will be added in Phase 3.</p>
+    return layout('Services & Pricing', `${adminNav(csrf)}<p class="admin-notice">Prices are in AUD. Enable online booking and select appointment types to offer a service on the booking-request form.</p>
         <p><a class="button button-primary" href="/admin/services/new">Add Service</a></p>
         <div class="admin-service-list">${rows.map(row => `<article class="admin-card"><h2><a href="/admin/services/${row.id}">${escape(row.name)}</a></h2>
         <p>${escape(formatPrice(row))} · ${row.duration_minutes} minutes</p><p>${row.visible ? 'Visible' : 'Hidden'} · ${row.online_booking ? 'Booking enabled' : 'Booking disabled'}</p>

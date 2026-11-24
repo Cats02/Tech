@@ -21,10 +21,11 @@ export function loginPage(csrf, message = '') {
         <label for="admin-password">Password</label><input id="admin-password" name="password" type="password" autocomplete="current-password" required maxlength="128">
         <button class="button button-primary" type="submit">Log In</button></form>`);
 }
-export function dashboardPage(admin, csrf) {
+export function dashboardPage(admin, csrf, pending=0) {
     return layout('Dashboard', `<div class="admin-card"><p>Signed in as ${escape(admin.email)}.</p>
         <p><a class="button button-primary" href="/admin/services">Services &amp; Pricing</a></p>
-        <p>Edit services and pricing using the link above. Booking requests, calendar and customer management will follow in the next phases.</p>
+        <p><a class="button button-secondary" href="/admin/bookings">Bookings — ${escape(pending)} PENDING</a></p>
+        <p>Booking requests require manual review. Open Bookings to review requests and contact the customer to arrange an appointment.</p>
         <form method="post" action="/admin/logout"><input type="hidden" name="_csrf" value="${escape(csrf)}">
         <button class="button button-secondary" type="submit">Log Out</button></form></div>`);
 }

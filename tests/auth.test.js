@@ -18,7 +18,7 @@ function fixture({ limited = false, production = false } = {}) {
         consumeRateLimit: async (key, max) => { attempts.set(key, (attempts.get(key) || 0) + 1); return !limited && attempts.get(key) <= max; }
     };
     // Memory storage is intentionally restricted to isolated test fixtures.
-    return createApp({ config: { ...config, production, proxyHops: production ? 1 : 0 }, repository, sessionStore: new session.MemoryStore(), serviceRepository: { list: async () => [] } });
+    return createApp({ config: { ...config, production, proxyHops: production ? 1 : 0 }, repository, sessionStore: new session.MemoryStore(), serviceRepository: { list: async () => [] }, bookingRepository:{pendingCount:async()=>0} });
 }
 function token(response) { return response.text.match(/name="_csrf" value="([a-f0-9]+)"/)[1]; }
 async function authenticate(agent) {
