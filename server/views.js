@@ -23,7 +23,8 @@ export function loginPage(csrf, message = '') {
 }
 export function dashboardPage(admin, csrf) {
     return layout('Dashboard', `<div class="admin-card"><p>Signed in as ${escape(admin.email)}.</p>
-        <p>The secure admin foundation is ready. Bookings, calendar, services and customer management will be added in the following phases.</p>
+        <p><a class="button button-primary" href="/admin/services">Services &amp; Pricing</a></p>
+        <p>Edit services and pricing using the link above. Booking requests, calendar and customer management will follow in the next phases.</p>
         <form method="post" action="/admin/logout"><input type="hidden" name="_csrf" value="${escape(csrf)}">
         <button class="button button-secondary" type="submit">Log Out</button></form></div>`);
 }

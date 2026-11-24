@@ -1964,6 +1964,7 @@ html { scroll-padding-bottom: 84px; }
 }
 
 /* Text scaling uses the root font size so existing rem typography scales together. */
+.service-full-description { white-space: pre-line; overflow-wrap: anywhere; }
 .accessibility-size-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .accessibility-size-controls button {
     flex: 1; min-width: 44px; min-height: 44px; padding: 6px;

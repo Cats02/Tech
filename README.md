@@ -1,6 +1,6 @@
 # Everbright Digital
 
-Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phase 1 adds secure administrator authentication only. Services/pricing, booking requests, calendar, customer records and email are subsequent phases; the public website remains unchanged.
+Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–2 add secure administrator authentication and database-backed services/pricing. Booking requests, calendar, customer records and email are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
 
 ## Requirements
 
@@ -56,8 +56,8 @@ Before production: run both suites, dependency auditing, mobile/keyboard checks 
 
 ## Implementation sequence
 
-1. Backend/MySQL migrations and secure admin authentication (current).
-2. Editable services/pricing, historical prices and public rendering.
+1. Backend/MySQL migrations and secure admin authentication (implemented).
+2. Editable services/pricing, historical prices and public rendering (implemented).
 3. Pending-only booking requests and customer association.
 4. Manual approval, proposals, decline/cancel/complete and history.
 5. Calendar, weekly availability, blocked periods and transactional overlap prevention.
@@ -66,3 +66,17 @@ Before production: run both suites, dependency auditing, mobile/keyboard checks 
 8. Full security, accessibility, responsive and deployment verification.
 
 Later MySQL scheduling will use a shared calendar lock row and database transactions for both acceptance and blocked-period updates; an unchecked query followed by an insert cannot safely prevent concurrent overlaps. UTC times will display using Australia/Adelaide. Current public content, pricing and enquiry functionality remain as-is until their respective phases.
+
+## Phase 2 deployment and service management
+
+Before pushing Phase 2 to the auto-deployed staging branch, run migrations against its database. Alternatively, import `server/migrations/002-services.sql` using phpMyAdmin (the same import method used for Phase 1). It creates services/price_history and seeds 17 existing services without overwriting services on repeat import. Run `npm run migrate` from a configured SSH shell later to register/check migration history; the initial manual imports are idempotent. Never edit a migration already registered in schema_migrations.
+
+Deploy only after tables exist. Phase 2 startup checks require them. Public `/`, `/index.html`, `/website-development.html` and `/cad-3d-printing.html` are rendered from the database. Hard-coded markup inside clearly marked pricing blocks remains as a static-source reference for the original design; Node replaces it on every request. Database failures return an error rather than displaying outdated prices. The original generic service-category information remains static content.
+
+Sign in and select **Services & Pricing**. Add/edit services, short/full plain-text descriptions, homepage notes, category, amount/type/unit, booking duration, appointment types, visibility and display order. Support services can appear in the homepage pricing list; web/CAD services also appear on their respective specialist pages. The homepage note is a separate optional field so existing travel/diagnosis policies are retained. Existing homepage label variants are preserved until the service name is edited. One-Page Website pricing is shared with the homepage Website Development entry.
+
+Prices use integer AUD cents. From + hourly unit preserves existing “From $70 per hour” pricing. Request a Quote has no amount. Price/type/unit changes and their administrator are recorded atomically with the edit, displayed in Adelaide time. Older forms receive HTTP 409 rather than overwriting changes. No delete action exists, so services can be hidden without erasing history.
+
+Seeded services start with online booking disabled, no appointment types, and a provisional 60-minute duration. Review these values before enabling booking when Phase 3 is available. Enabling this field in Phase 2 does not create a public booking form yet.
+
+Phase 2 verification: `npm test` covers validation, price formatting, escaping, public rendering, protected edits, CSRF, price-history rendering, stale forms and authentication. `npm run test:database` additionally exercises real service persistence, audit writes and concurrent edits, and still requires a disposable `_test` database. Browser checks should include all public pages and the editor at mobile widths, larger text settings and keyboard operation.

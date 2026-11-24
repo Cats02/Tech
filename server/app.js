@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { verifyPassword } from './passwords.js';
 import { loginPage, dashboardPage, layout } from './views.js';
+import { renderPublicServices, serviceListPage, serviceEditPage, validateService } from './services.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const publicPages = ['index.html', 'about.html', 'privacy.html', 'cad-3d-printing.html', 'website-development.html'];
@@ -14,8 +15,9 @@ const analyticsHashes = [...new Set(publicPages.flatMap(page =>
     [...readFileSync(`${root}${page}`, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
         .filter(match => match[1].trim()).map(match => `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`)
 ))];
-export function createApp({ config, repository, sessionStore }) {
+export function createApp({ config, repository, sessionStore, serviceRepository }) {
     if (!sessionStore) throw new Error('A persistent session store is required.');
+    if (!serviceRepository) throw new Error('A service database repository is required.');
     const app = express();
     app.disable('x-powered-by');
     app.set('trust proxy', config.proxyHops || false);
@@ -36,8 +38,15 @@ export function createApp({ config, repository, sessionStore }) {
     app.get('/health', (req, res) => res.json({ status: 'ok' }));
     app.use('/assets', express.static(`${root}assets`, { dotfiles: 'deny', index: false }));
     for (const asset of ['style.css', 'script.js', 'admin.css']) app.get(`/${asset}`, (req, res) => res.sendFile(`${root}${asset}`));
-    app.get('/', (req, res) => res.sendFile(`${root}index.html`));
-    for (const page of publicPages) app.get(`/${page}`, (req, res) => res.sendFile(`${root}${page}`));
+    const sendPublicPage = page => async (req, res) => {
+        const html = readFileSync(`${root}${page}`, 'utf8');
+        if (!html.includes('<!-- services:')) return res.sendFile(`${root}${page}`);
+        const rows = await serviceRepository.list(true);
+        // Do not serve stale hard-coded prices if the database is unavailable.
+        res.set('Cache-Control', 'no-store').type('html').send(renderPublicServices(html, rows));
+    };
+    app.get('/', sendPublicPage('index.html'));
+    for (const page of publicPages) app.get(`/${page}`, sendPublicPage(page));
 
     app.use('/admin', helmet.contentSecurityPolicy({ directives: {
         defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'"],
@@ -51,7 +60,7 @@ export function createApp({ config, repository, sessionStore }) {
         if (config.production && !req.secure) return res.status(400).send('HTTPS is required.');
         next();
     });
-    app.use('/admin', express.urlencoded({ extended: false, limit: '12kb', parameterLimit: 10 }));
+    app.use('/admin', express.urlencoded({ extended: false, limit: '32kb', parameterLimit: 60 }));
     const cookieName = config.production ? '__Host-everbright.sid' : 'everbright.sid';
     app.use('/admin', session({
         name: cookieName, secret: config.secret, store: sessionStore,
@@ -102,6 +111,30 @@ export function createApp({ config, repository, sessionStore }) {
         res.redirect(303, '/admin/login');
     });
     app.get('/admin', (req, res) => res.send(dashboardPage(req.admin, req.session.csrf)));
+    app.get('/admin/services', async (req, res) => res.send(serviceListPage(await serviceRepository.list(), req.session.csrf)));
+    app.get('/admin/services/new', (req, res) => res.send(serviceEditPage(null, [], req.session.csrf)));
+    app.get('/admin/services/:id', async (req, res) => {
+        if (!/^[1-9]\d{0,18}$/.test(req.params.id)) return res.status(404).send('Service not found.');
+        const row = await serviceRepository.get(req.params.id);
+        if (!row) return res.status(404).send('Service not found.');
+        res.send(serviceEditPage(row, await serviceRepository.history(row.id), req.session.csrf, [], req.query.saved === '1'));
+    });
+    app.post('/admin/services/:id', async (req, res) => {
+        const isNew = req.params.id === 'new';
+        if (!isNew && !/^[1-9]\d{0,18}$/.test(req.params.id)) return res.status(404).send('Service not found.');
+        const result = validateService(req.body);
+        const current = isNew ? null : await serviceRepository.get(req.params.id);
+        if (!isNew && !current) return res.status(404).send('Service not found.');
+        const history = current ? await serviceRepository.history(current.id) : [];
+        if (result.errors.length) return res.status(422).send(serviceEditPage({ ...current, ...result.value }, history, req.session.csrf, result.errors));
+        try {
+            const id = await serviceRepository.save(isNew ? null : req.params.id, result.value, req.admin.id);
+            res.redirect(303, `/admin/services/${id}?saved=1`);
+        } catch (error) {
+            if (![404,409].includes(error.status)) throw error;
+            res.status(error.status).send(serviceEditPage({ ...current, ...result.value }, history, req.session.csrf, [error.message]));
+        }
+    });
     app.use((req, res) => res.status(404).send('Page not found.'));
     app.use((error, req, res, next) => {
         if (res.headersSent) return next(error);
