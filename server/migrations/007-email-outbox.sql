@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS email_outbox (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    booking_id BIGINT UNSIGNED NOT NULL,
+    event_key VARCHAR(120) NOT NULL UNIQUE,
+    event_type ENUM('received','confirmed','proposed','declined','cancelled') NOT NULL,
+    review_version INT UNSIGNED NOT NULL DEFAULT 0,
+    recipient VARCHAR(254) NOT NULL,
+    payload TEXT NOT NULL,
+    status ENUM('HELD','PENDING','SENDING','SENT','FAILED','SKIPPED') NOT NULL DEFAULT 'HELD',
+    attempts SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    next_attempt_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    last_error VARCHAR(80) NULL,
+    sent_to VARCHAR(254) NULL,
+    sent_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    FOREIGN KEY (booking_id) REFERENCES bookings(id),
+    INDEX email_delivery_queue (status,next_attempt_at,id),
+    INDEX email_booking_history (booking_id,id)
+) ENGINE=InnoDB;

@@ -1,3 +1,4 @@
+import {mailPage} from './mail.js';
 import express from 'express';
 import session from 'express-session';
 import helmet from 'helmet';
@@ -20,7 +21,7 @@ const analyticsHashes = [...new Set(publicPages.flatMap(page =>
     [...readFileSync(`${root}${page}`, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
         .filter(match => match[1].trim()).map(match => `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`)
 ))];
-export function createApp({ config, repository, sessionStore, serviceRepository, bookingRepository, reviewRepository, schedulingRepository, customerRepository }) {
+export function createApp({ config, repository, sessionStore, serviceRepository, bookingRepository, reviewRepository, schedulingRepository, customerRepository, mailer }) {
     if (!sessionStore) throw new Error('A persistent session store is required.');
     if (!serviceRepository) throw new Error('A service database repository is required.');
     if (!bookingRepository) throw new Error('A booking database repository is required.');
@@ -169,6 +170,11 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
         await new Promise((resolve, reject) => req.session.destroy(error => error ? reject(error) : resolve()));
         res.clearCookie(cookieName, { path: '/', httpOnly: true, sameSite: 'strict', secure: config.production });
         res.redirect(303, '/admin/login');
+    });
+    app.get('/admin/emails',async(req,res)=>mailer?res.send(mailPage(mailer,await mailer.list(),req.session.csrf)):res.status(404).send('Email unavailable.'));
+    app.post('/admin/emails/:id/release',async(req,res)=>{
+        if(!mailer||!/^\d+$/.test(req.params.id))return res.sendStatus(404);
+        await mailer.release(req.params.id);res.redirect(303,'/admin/emails');
     });
     app.get('/admin', async (req, res) => {
         const summary=bookingRepository.summary?await bookingRepository.summary():await bookingRepository.pendingCount();

@@ -1,3 +1,4 @@
+import {createMailer} from './mail.js';
 import { loadConfig } from './config.js';
 import { createPool } from './db.js';
 import { createRepository, MySQLSessionStore } from './store.js';
@@ -14,6 +15,7 @@ async function start() {
     const config = loadConfig();
     const pool = createPool();
     try {
+        await pool.query('SELECT id FROM email_outbox LIMIT 0');
         await pool.query('SELECT id FROM admin_users LIMIT 0');
         await pool.query('SELECT id FROM sessions LIMIT 0');
         await pool.query('SELECT bucket FROM rate_limits LIMIT 0');
@@ -35,8 +37,10 @@ async function start() {
         process.exitCode = 1;
         return;
     }
-    const app = createApp({ config, repository: createRepository(pool, config.secret), sessionStore: new MySQLSessionStore(pool), serviceRepository: createServiceRepository(pool), bookingRepository:createBookingRepository(pool),reviewRepository:createReviewRepository(pool),schedulingRepository:createSchedulingRepository(pool),customerRepository:createCustomerRepository(pool) });
+    const mailer=createMailer(pool);
+    const app = createApp({ mailer, config, repository: createRepository(pool, config.secret), sessionStore: new MySQLSessionStore(pool), serviceRepository: createServiceRepository(pool), bookingRepository:createBookingRepository(pool,{queueEmail:mailer.queue}),reviewRepository:createReviewRepository(pool,{queueEmail:mailer.queue}),schedulingRepository:createSchedulingRepository(pool),customerRepository:createCustomerRepository(pool) });
     const server = app.listen(config.port, '0.0.0.0', () => console.log('Everbright application started.'));
+    const mailTimer=setInterval(()=>mailer.processQueue().catch(()=>console.error('Email queue processing failed.')),30000);mailTimer.unref();
     const cleanup = setInterval(async () => {
         try {
             await pool.execute('DELETE FROM sessions WHERE expires_at <= ?', [Date.now()]);
@@ -45,7 +49,7 @@ async function start() {
     }, 15 * 60 * 1000);
     cleanup.unref();
     for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
-        clearInterval(cleanup);
+        clearInterval(cleanup);clearInterval(mailTimer);
         server.close(async () => { await pool.end(); process.exit(0); });
     });
 }

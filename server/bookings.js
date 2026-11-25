@@ -38,7 +38,7 @@ export function validateBooking(body, service, now=new Date()) {
     return {errors,value:{name,email,phone,address,description,appointment_type,preferred_start,alternative_start}};
 }
 
-export function createBookingRepository(pool,{enforceAvailability=true}={}) {
+export function createBookingRepository(pool,{enforceAvailability=true,queueEmail=null}={}) {
     return {
         async submit(serviceId,value,key) {
             const db=await pool.getConnection();
@@ -63,6 +63,7 @@ export function createBookingRepository(pool,{enforceAvailability=true}={}) {
                     VALUES (?,?,?,'PENDING',?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[key,customer.id,service.id,value.name,value.email,value.phone,
                     service.name,service.amount_cents,service.price_type,service.billing_unit,service.duration_minutes,value.appointment_type,value.address,
                     value.preferred_start,value.alternative_start,value.description,TERMS_VERSION]);
+                if(queueEmail)await queueEmail(db,{id:result.insertId,key:`booking:${result.insertId}:received`,type:'received',version:0,email:value.email,name:value.name,service:service.name});
                 await db.commit();return result.insertId;
             }catch(error){await db.rollback();throw error;}finally{db.release();}
         },
@@ -116,7 +117,7 @@ export function bookingFormPage(services,selected,csrf,key,values={},errors=[],n
         ${errors.length?`<div role="alert" class="admin-notice"><h2>Please check your request</h2><ul>${errors.map(e=>`<li>${escape(e)}</li>`).join('')}</ul></div>`:''}
         ${available.length?choose:'<p>Online booking requests are not currently available. <a href="/#contact">Contact us to arrange an appointment.</a></p>'}${form}`);
 }
-export const receivedPage=()=>bookingLayout('Booking Request Received',`<p role="status" class="admin-notice">${bookingReceived}</p><p>Your request has been saved. This page does not confirm an appointment. No confirmation email is sent at this stage.</p><a href="/">Return home</a>`);
+export const receivedPage=()=>bookingLayout('Booking Request Received',`<p role="status" class="admin-notice">${bookingReceived}</p><p>Your request has been saved. This page does not confirm an appointment. Email notifications are handled separately. Contact us directly if you do not receive an update.</p><a href="/">Return home</a>`);
 export const bookingTermsPage=()=>bookingLayout('Booking Request Terms',`<div class="admin-card"><p>Version: ${TERMS_VERSION}</p><p>${bookingNotice}</p>
     <p>Your requested times are preferences. Everbright Digital will review the service, appointment type, location and availability before agreeing an appointment with you.</p>
     <p>Displayed prices are guides. Scope, applicable travel, materials and final charges will be agreed before work begins. Sending a request does not authorise payment.</p>

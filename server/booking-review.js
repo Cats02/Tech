@@ -27,7 +27,7 @@ export function reviewInput(row,body,now=new Date()) {
     return {action,note,start,end,status};
 }
 
-export function createReviewRepository(pool,{enforceAvailability=true}={}) {
+export function createReviewRepository(pool,{enforceAvailability=true,queueEmail=null}={}) {
     return {
         async details(id) {
             const [[row]]=await pool.execute(`SELECT b.*, COALESCE(r.version,0) AS review_version,r.proposed_start,r.proposed_end
@@ -81,6 +81,7 @@ export function createReviewRepository(pool,{enforceAvailability=true}={}) {
                 }
                 await db.execute(`INSERT INTO booking_events (booking_id,admin_id,action,previous_status,new_status,start_at,end_at,note)
                     VALUES (?,?,?,?,?,?,?,?)`,[id,adminId,value.action,row.status,value.status,value.start,value.end,value.note]);
+                if(queueEmail&&value.action!=='complete')await queueEmail(db,{id,key:`booking:${id}:review:${Number(row.review_version)+1}`,type:({accept:'confirmed',propose:'proposed',decline:'declined',cancel:'cancelled'})[value.action],version:Number(row.review_version)+1,email:row.customer_email,name:row.customer_name,service:row.service_name,start:value.start||row.confirmed_start,end:value.end||row.confirmed_end});
                 await db.commit();return value;
             }catch(error){await db.rollback();throw error;}finally{db.release();}
         }
@@ -93,12 +94,12 @@ export function reviewPanel(row,history,conflicts,csrf,errors=[],saved=false) {
     const local=adelaideLocal(new Date(baseTime));
     const hidden=`<input type="hidden" name="_csrf" value="${escape(csrf)}"><input type="hidden" name="version" value="${Number(row.review_version||0)}">`;
     const actionForm=(action,title,content='')=>`<form class="admin-card booking-decision" method="post" action="/admin/bookings/${row.id}/review">${hidden}
-        <input type="hidden" name="action" value="${action}"><h3>${title}</h3>${content}<label for="${action}-note">${action==='decline'?'Reason / note (optional)':'Note (optional)'}</label>
+        <input type="hidden" name="action" value="${action}"><h3>${title}</h3>${content}<label for="${action}-note">Private note (not emailed, optional)</label>
         <textarea id="${action}-note" name="note" rows="2" maxlength="2000"></textarea><button type="submit" class="button button-secondary">${title}</button></form>`;
     const timeFields=prefix=>`<label for="${prefix}-date">Date — Adelaide time</label><input id="${prefix}-date" name="start_date" type="date" value="${local.slice(0,10)}" required>
         <label for="${prefix}-time">Time — Adelaide time</label><input id="${prefix}-time" name="start_time" type="time" value="${local.slice(11)}" required>`;
     return `<section class="admin-history" aria-labelledby="booking-review-title"><h2 id="booking-review-title">Review Booking</h2>
-        ${saved?'<p role="status" class="admin-notice">Decision saved. No email has been sent; contact the customer directly.</p>':''}
+        ${saved?'<p role="status" class="admin-notice">Decision saved. Check Email Notifications for delivery status; contact the customer directly while delivery is held.</p>':''}
         ${errors.length?`<div role="alert" class="admin-notice">${errors.map(escape).join(' ')}</div>`:''}
         ${row.confirmed_start?`<p><strong>Scheduled:</strong> ${escape(displayBookingTime(row.confirmed_start))} – ${escape(displayBookingTime(row.confirmed_end))}</p>`:''}
         ${row.proposed_start?`<p><strong>Proposed:</strong> ${escape(displayBookingTime(row.proposed_start))}. A proposal does not reserve the time or confirm the appointment.</p>`:''}

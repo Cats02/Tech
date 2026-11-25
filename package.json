@@ -9,13 +9,15 @@
     "migrate": "node --env-file-if-exists=.env server/migrate.js",
     "admin:create": "node --env-file-if-exists=.env server/create-admin.js",
     "test": "node --test",
-    "test:database": "node --env-file-if-exists=.env --test tests/database.integration.js"
+    "test:database": "node --env-file-if-exists=.env --test tests/database.integration.js",
+    "mail:work": "node --env-file-if-exists=.env server/mail-worker.js"
   },
   "dependencies": {
     "express": "^5.1.0",
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
-    "mysql2": "^3.14.0"
+    "mysql2": "^3.14.0",
+    "nodemailer": "^7.0.0"
   },
   "devDependencies": { "supertest": "^7.1.0" }
 }
