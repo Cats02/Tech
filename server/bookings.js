@@ -88,14 +88,14 @@ export function createBookingRepository(pool,{enforceAvailability=true,queueEmai
 function bookingLayout(title,content) {
     return layout(title,`<nav class="admin-nav" aria-label="Booking navigation"><a href="/">Home</a><a href="/book">Book an Appointment</a><a href="/privacy.html">Privacy Policy</a></nav>${content}`);
 }
-export function bookingFormPage(services,selected,csrf,key,values={},errors=[],now=new Date()) {
+export function bookingFormPage(services,selected,csrf,key,values={},errors=[],now=new Date(),showDetails=true) {
     const text=(name)=>typeof values[name]==='string'?escape(values[name]):'';
     const input=(name,label,attributes='')=>`<label for="booking-${name}">${label}</label><input id="booking-${name}" name="${name}" value="${text(name)}" ${attributes}>`;
     const available=services.filter(bookable);
     const choose=`<form class="admin-card booking-service-choice" action="/book" method="get"><label for="booking-service">Service required</label>
         <select id="booking-service" name="service" required><option value="">Select a service</option>${available.map(s=>`<option value="${s.id}"${String(s.id)===String(selected?.id)?' selected':''}>${escape(s.name)}</option>`).join('')}</select>
         <button class="button button-secondary" type="submit">Choose Service</button></form>`;
-    const form=selected?`<form class="admin-card booking-form" action="/book" method="post">
+    const form=selected&&showDetails?`<form class="admin-card booking-form" action="/book" method="post">
         <input type="hidden" name="_csrf" value="${escape(csrf)}"><input type="hidden" name="submission_key" value="${escape(key)}"><input type="hidden" name="service_id" value="${selected.id}">
         <h2>${escape(selected.name)}</h2><p>Guide price: ${escape(formatPrice(selected))}. Final scope and charges will be agreed before work begins.</p>
         ${input('name','Full name','autocomplete="name" maxlength="160" required')}

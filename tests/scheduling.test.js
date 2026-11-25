@@ -49,6 +49,9 @@ test('public form offers available times only; calendar/settings remain admin-on
     const selected={id:4,name:'Diagnosis',visible:1,online_booking:1,appointment_types:'Remote',duration_minutes:60,price_type:'from',billing_unit:'item',amount_cents:4500};
     const app=createApp({config:{production:false,origin:'http://localhost:3000',secret:'s'.repeat(64)},sessionStore:new session.MemoryStore(),repository:{consumeRateLimit:async()=>true},
         serviceRepository:{list:async()=>[selected]},bookingRepository:{},schedulingRepository:{slots:async()=>['09:00','10:00']}});
+    for(const path of ['/book','/book?service=4']){
+        const first=await request(app).get(path);assert.equal(first.status,200);assert.match(first.text,/Show Available Times/);assert.match(first.text,/name="date"/);assert.doesNotMatch(first.text,/id="booking-name"|id="booking-preferred_time"|Send Booking Request/);
+    }
     const response=await request(app).get('/book?service=4&date=2027-02-01');
     assert.equal(response.status,200);assert.match(response.text,/<select id="booking-preferred_time"/);assert.match(response.text,/<option value="09:00"/);
     assert.doesNotMatch(response.text,/<input id="booking-preferred_time"/);assert.match(response.text,/Show Available Times/);

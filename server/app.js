@@ -97,14 +97,15 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
         return key;
     }
     const bookingPage=async(req,services,selected,key,values={},errors=[])=>{
-        let html=bookingFormPage(services,selected,req.session.csrf,key,values,errors);
-        if(schedulingRepository&&selected){
+        const showDetails=!schedulingRepository||req.method==='POST'||validDay(req.query.date);
+        let html=bookingFormPage(services,selected,req.session.csrf,key,values,errors,new Date(),showDetails);
+        if(schedulingRepository){
             const day=validDay(req.body?.preferred_date)?req.body.preferred_date:validDay(req.query.date)?req.query.date:adelaideLocal(new Date()).slice(0,10);
             const second=validDay(req.body?.alternative_date)?req.body.alternative_date:validDay(req.query.date2)?req.query.date2:'';
-            const slots=await schedulingRepository.slots(selected,day),secondSlots=second?await schedulingRepository.slots(selected,second):[];
+            const slots=selected&&showDetails?await schedulingRepository.slots(selected,day):[],secondSlots=selected&&showDetails&&second?await schedulingRepository.slots(selected,second):[];
             const options=(times,chosen)=>times.map(t=>`<option value="${t}"${t===chosen?' selected':''}>${t}</option>`).join('');
             // Replace the original preference inputs with server-generated available choices.
-            html=html.replace('<button class="button button-secondary" type="submit">Choose Service</button>',`<p>Choose dates before entering your details. Changing dates reloads the form.</p><label for="slot-date">Date to check</label><input id="slot-date" name="date" type="date" value="${day}" required>
+            html=html.replace('<button class="button button-secondary" type="submit">Choose Service</button>',`<p>Choose your service and dates, then show available times to continue.</p><label for="slot-date">Date to check</label><input id="slot-date" name="date" type="date" value="${day}" required>
                 <label for="slot-date2">Second date to check (optional)</label><input id="slot-date2" name="date2" type="date" value="${second}"><button class="button button-secondary" type="submit">Show Available Times</button>`);
             html=html.replace(/<input id="booking-preferred_date"[^>]*>/,`<input id="booking-preferred_date" name="preferred_date" type="date" value="${day}" readonly>`)
                 .replace(/<input id="booking-preferred_time"[^>]*>/,`<select id="booking-preferred_time" name="preferred_time" required><option value="">${slots.length?'Select an available time':'No available times — choose another date above'}</option>${options(slots,values.preferred_time)}</select>`)
