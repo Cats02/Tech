@@ -13,7 +13,7 @@ import { bookable, validateBooking, bookingFormPage, receivedPage, bookingTermsP
 import { reviewPanel } from './booking-review.js';
 import {settingsPage,calendarPage,calendarRange,validDay} from './scheduling.js';
 import {adelaideLocal,parseAdelaide} from './booking-time.js';
-import {customerPageNumber,validateCustomer,customerListPage,customerDetailPage} from './customers.js';
+import {customerPageNumber,validateCustomer,customerListPage,customerDetailPage,customerDeletePage} from './customers.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const publicPages = ['index.html', 'about.html', 'privacy.html', 'cad-3d-printing.html', 'website-development.html'];
@@ -226,7 +226,19 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
         if(!customerRepository)return res.status(404).send('Customers unavailable.');
         const search=typeof req.query.q==='string'?req.query.q.trim():'';
         if(search.length>100)return res.status(422).send(customerListPage({rows:[],total:0,page:1,search:''},req.session.csrf,['Search must be at most 100 characters.']));
-        res.send(customerListPage(await customerRepository.list(search,customerPageNumber(req.query.page)),req.session.csrf));
+        res.send(customerListPage(await customerRepository.list(search,customerPageNumber(req.query.page)),req.session.csrf,[],req.query.deleted==='1'));
+    });
+    app.get('/admin/customers/:id/delete',async(req,res)=>{
+        if(!customerRepository||!/^\d{1,19}$/.test(req.params.id))return res.sendStatus(404);
+        const data=await customerRepository.detail(req.params.id);if(!data)return res.sendStatus(404);
+        res.send(customerDeletePage(data,req.session.csrf));
+    });
+    app.post('/admin/customers/:id/delete',async(req,res)=>{
+        if(!customerRepository||!/^\d{1,19}$/.test(req.params.id))return res.sendStatus(404);
+        const data=await customerRepository.detail(req.params.id);if(!data)return res.sendStatus(404);
+        if(req.body.confirm!=='1')return res.status(422).send(customerDeletePage(data,req.session.csrf,['Confirm deletion to continue.']));
+        try{await customerRepository.remove(req.params.id,req.body.version);res.redirect(303,'/admin/customers?deleted=1');}
+        catch(error){if(![404,409].includes(error.status))throw error;res.status(error.status).send(customerDeletePage(data,req.session.csrf,[error.message]));}
     });
     app.get('/admin/customers/:id',async(req,res)=>{
         if(!customerRepository||!/^[1-9]\d{0,18}$/.test(req.params.id))return res.status(404).send('Customer not found.');

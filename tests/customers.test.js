@@ -54,3 +54,30 @@ test('customer routes require admin/CSRF and preserve the booking snapshot after
     assert.equal((await agent.post('/admin/customers/1').type('form').send({...body,_csrf:token(profile)})).status,409);
     assert.equal((await agent.get('/admin/customers/999')).status,404);
 });
+
+
+test('customer deletion unlinks bookings and deletes only profile records atomically',async()=>{
+ let calls=[],commit=0,rollback=0,version=2,failDelete=false;
+ const db={beginTransaction:async()=>{},query:async()=>[[{id:1}]],execute:async(sql,args)=>{calls.push({sql,args});if(sql.startsWith('SELECT'))return [[{id:1,version}]];if(failDelete&&sql.startsWith('DELETE FROM customers'))throw new Error('write failed');return [{affectedRows:1}];},commit:async()=>commit++,rollback:async()=>rollback++,release:()=>{}};
+ const repo=createCustomerRepository({getConnection:async()=>db});
+ await assert.rejects(repo.remove(1,'1'),{status:409});assert.equal(rollback,1);assert.equal(calls.some(c=>c.sql.startsWith('DELETE')),false);
+ calls=[];await repo.remove(1,'2');assert.equal(commit,1);
+ assert.deepEqual(calls.filter(c=>!c.sql.startsWith('SELECT')).map(c=>c.sql),['UPDATE bookings SET customer_id=NULL WHERE customer_id=?','DELETE FROM customer_versions WHERE customer_id=?','DELETE FROM customers WHERE id=?']);
+ assert.ok(calls.every(c=>c.args[0]===1));
+ failDelete=true;await assert.rejects(repo.remove(1,'2'));assert.equal(commit,1);assert.equal(rollback,2);
+});
+
+test('customer delete routes require login, CSRF, confirmation and the reviewed version',async()=>{
+ let removed=false;
+ const app=createApp({config:{production:false,origin:'http://localhost:3000',secret:'s'.repeat(64)},sessionStore:new session.MemoryStore(),serviceRepository:{list:async()=>[]},bookingRepository:{pendingCount:async()=>0},
+ repository:{findAdmin:async()=>({id:1,email:'admin@example.test',password_hash:hash}),getAdmin:async()=>({id:1,email:'admin@example.test'}),recordLogin:async()=>{},consumeRateLimit:async()=>true},
+ customerRepository:{detail:async()=>removed?null:{customer,upcoming:[],history:[],total:0,page:1},remove:async(id,version)=>{assert.equal(id,'1');if(version!=='0')throw Object.assign(new Error('Reload confirmation'),{status:409});removed=true;}}});
+ const token=r=>r.text.match(/name="_csrf" value="([a-f0-9]+)"/)[1];
+ assert.equal((await request(app).get('/admin/customers/1/delete')).status,303);
+ const agent=request.agent(app),login=await agent.get('/admin/login');await agent.post('/admin/login').type('form').send({_csrf:token(login),email:'admin@example.test',password:'Customer test admin password!'});
+ const page=await agent.get('/admin/customers/1/delete');assert.equal(page.status,200);assert.match(page.text,/does not cancel appointments/);assert.match(page.headers['cache-control'],/no-store/);assert.equal(removed,false);
+ assert.equal((await agent.post('/admin/customers/1/delete').type('form').send({confirm:'1',version:'0'})).status,403);
+ assert.equal((await agent.post('/admin/customers/1/delete').type('form').send({_csrf:token(page),version:'0'})).status,422);
+ assert.equal((await agent.post('/admin/customers/1/delete').type('form').send({_csrf:token(page),confirm:'1',version:'1'})).status,409);assert.equal(removed,false);
+ const result=await agent.post('/admin/customers/1/delete').type('form').send({_csrf:token(page),confirm:'1',version:'0'});assert.equal(result.status,303);assert.equal(result.headers.location,'/admin/customers?deleted=1');assert.equal(removed,true);
+});

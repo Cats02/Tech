@@ -165,3 +165,8 @@ These checks do not substitute for a real MySQL integration run or assistive-tec
 ## Admin presentation refresh
 
 Shared private screens use a compact branded header, desktop sidebar with active section, wrapping mobile navigation, consistent forms and booking status labels. The dashboard shows live repository summary counts and management shortcuts. Unavailable summary counts are shown as an em dash rather than invented data. Authentication, CSRF checks, routes and database writes are unchanged. No migration is required. Verified the 38-test suite and local workflow/browser fixtures at five widths with 140% text. Stage on spare before reviewing the new appearance.
+
+
+## Customer profile deletion
+
+Import 008-customer-deletion.sql before deploying this change. It makes bookings.customer_id nullable without removing existing links or booking records. Admin → Customers → customer record → Delete Customer opens a separate confirmation page, requires a checkbox and CSRF-protected POST, and checks the customer version in a transaction. The shared calendar lock serializes deletion with booking submissions. Deletion unlinks bookings, deletes customer_versions, then deletes the customer profile/private notes; failures roll back. Booking/contact snapshots, reservations, event history and email records remain. This is profile deletion, not complete personal-data erasure or appointment cancellation. A new request can create a new profile for the same contact. Restore from an approved backup is the only recovery for deleted notes. Local transaction tests use mocks; MySQL migration/restore checks remain separate staging work.

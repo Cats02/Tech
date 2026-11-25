@@ -21,6 +21,23 @@ export function validateCustomer(body){
 }
 export function createCustomerRepository(pool){
     return {
+        async remove(id,version){
+            const db=await pool.getConnection();
+            try{
+                await db.beginTransaction();
+                // Use the same lock order as booking submission before unlinking records.
+                const [[lock]]=await db.query('SELECT id FROM calendar_lock WHERE id=1 FOR UPDATE');
+                if(!lock)throw new Error('Calendar lock missing');
+                const [[row]]=await db.execute(`SELECT c.id,COALESCE(v.version,0) AS version FROM customers c
+                    LEFT JOIN customer_versions v ON v.customer_id=c.id WHERE c.id=? FOR UPDATE`,[id]);
+                if(!row)throw fail('Customer not found.',404);
+                if(typeof version!=='string'||!/^\d{1,10}$/.test(version)||Number(row.version)!==Number(version))throw fail('This customer profile changed. Reload the confirmation before deleting.');
+                await db.execute('UPDATE bookings SET customer_id=NULL WHERE customer_id=?',[id]);
+                await db.execute('DELETE FROM customer_versions WHERE customer_id=?',[id]);
+                await db.execute('DELETE FROM customers WHERE id=?',[id]);
+                await db.commit();
+            }catch(error){await db.rollback();throw error;}finally{db.release();}
+        },
         async list(search='',page=1){
             if(typeof search!=='string'||search.length>100)throw fail('Search must be at most 100 characters.',422);
             const offset=(customerPageNumber(String(page))-1)*25;
@@ -69,8 +86,8 @@ export function createCustomerRepository(pool){
     };
 }
 const pagination=(page,total,url)=>`<nav class="admin-nav" aria-label="Pages">${page>1?`<a href="${url(page-1)}">Previous page</a>`:''}<span>Page ${page} · ${total} records</span>${page*25<total?`<a href="${url(page+1)}">Next page</a>`:''}</nav>`;
-export function customerListPage(data,csrf,errors=[]){
-    return layout('Customers',`${adminNav(csrf)}<p>Private customer records created from booking requests.</p>
+export function customerListPage(data,csrf,errors=[],deleted=false){
+    return layout('Customers',`${adminNav(csrf)}${deleted?'<p role="status" class="admin-notice">Customer profile deleted. Existing bookings have been kept.</p>':''}<p>Private customer records created from booking requests.</p>
         ${errors.length?`<p role="alert" class="admin-notice">${errors.map(escape).join(' ')}</p>`:''}
         <form class="admin-card" method="get" action="/admin/customers"><label for="customer-search">Search name, email, phone or address</label>
         <input id="customer-search" name="q" value="${escape(data.search)}" maxlength="100" type="search"><button type="submit" class="button button-secondary">Search Customers</button><a class="customer-clear" href="/admin/customers">Clear search</a></form>
@@ -95,5 +112,17 @@ export function customerDetailPage(data,csrf,errors=[],saved=false,submitted=nul
         <button class="button button-primary" type="submit">Save Customer</button></form>
         <section class="admin-history"><h2>Upcoming and Ongoing Confirmed Bookings</h2>${bookings(data.upcoming)||'<p>No upcoming confirmed appointments.</p>'}</section>
         <section class="admin-history"><h2>Booking History and Pending Requests</h2>${bookings(data.history)||'<p>No previous bookings or pending requests.</p>'}
-        ${pagination(data.page,data.total,p=>`/admin/customers/${c.id}?page=${p}`)}</section>`);
+        ${pagination(data.page,data.total,p=>`/admin/customers/${c.id}?page=${p}`)}</section>
+        <section class="admin-card admin-delete-section"><h2>Delete customer profile</h2><p>Remove this profile and its private notes. Existing booking records and their saved contact details will remain.</p><a class="button button-secondary" href="/admin/customers/${Number(c.id)}/delete">Delete Customer</a></section>`);
+}
+
+export function customerDeletePage(data,csrf,errors=[]){
+    const c=data.customer;
+    return layout('Delete Customer',`${adminNav(csrf)}<section class="admin-card admin-delete-section"><h2>Delete ${escape(c.name)}?</h2>
+        <p>This permanently removes the customer profile, address and private notes from the customer list. There is no undo.</p>
+        <p>Existing bookings, calendar reservations, decision history and queued emails remain unchanged, including contact details saved with those records. This does not cancel appointments or erase all personal data. A future booking may create a new customer profile.</p>
+        ${errors.length?`<p role="alert" class="admin-notice">${errors.map(escape).join(' ')}</p>`:''}
+        <form method="post" action="/admin/customers/${Number(c.id)}/delete"><input type="hidden" name="_csrf" value="${escape(csrf)}"><input type="hidden" name="version" value="${Number(c.version)}">
+        <label class="admin-checkbox"><input type="checkbox" name="confirm" value="1" required>I understand that this customer profile and private notes will be permanently deleted.</label>
+        <button type="submit" class="button admin-delete-button">Permanently Delete Customer</button> <a class="customer-clear" href="/admin/customers/${Number(c.id)}">Keep Customer</a></form></section>`);
 }

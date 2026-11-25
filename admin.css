@@ -151,3 +151,6 @@
 .admin-login .admin-page-heading h1 { font-size:2rem; }
 .admin-login .admin-brand-context { display:none; }
 .admin-login .admin-card .button { width:100%; }
+
+.admin-delete-section { margin-top:40px; border-color:#bb7180 !important; }
+.admin-delete-button { color:var(--tech-text); background:#7d2538; border:1px solid #da8b9a; cursor:pointer; margin-top:24px; }
