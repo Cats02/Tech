@@ -1,4 +1,4 @@
-import {escape,layout} from './views.js';
+import {escape,layout,bookingReference} from './views.js';
 import {adminNav,formatPrice} from './services.js';
 import {displayBookingTime} from './booking-time.js';
 const fail=(message,status=409)=>Object.assign(new Error(message),{status});
@@ -98,7 +98,7 @@ export function customerListPage(data,csrf,errors=[],deleted=false){
 export function customerDetailPage(data,csrf,errors=[],saved=false,submitted=null){
     const c=data.customer,value=submitted?{...c,...submitted,version:c.version}:c;
     const field=(key,label,attrs='')=>`<label for="customer-${key}">${label}</label><input id="customer-${key}" name="${key}" value="${escape(value[key]||'')}" ${attrs}>`;
-    const bookings=rows=>rows.map(b=>`<article class="admin-card booking-decision"><h3><a href="/admin/bookings/${b.id}">Booking #${b.id} — ${escape(b.service_name)}</a></h3>
+    const bookings=rows=>rows.map(b=>`<article class="admin-card booking-decision"><h3><a href="/admin/bookings/${b.id}">Booking ${bookingReference(b.id)} — ${escape(b.service_name)}</a></h3>
         <p><strong class="admin-status" data-status="${escape(b.status)}">Status: ${escape(b.status)}</strong></p><p>${b.confirmed_start?'Scheduled':'Preferred'}: ${escape(displayBookingTime(b.confirmed_start||b.preferred_start))}</p>
         <p>Price at request: ${escape(formatPrice(b))}</p></article>`).join('');
     return layout('Customer Record',`${adminNav(csrf)}<h2>${escape(c.name)}</h2>

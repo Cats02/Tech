@@ -78,3 +78,9 @@ test('public form offers available times only; calendar/settings remain admin-on
  reservations=[{start_at:parseAdelaide(day,'09:00'),end_at:parseAdelaide(day,'10:00')}];
  assert.equal((await repository.monthAvailability({duration_minutes:60},month)).find(d=>d.date===day).available,false);
  });
+
+test('calendar aligns Monday columns and shows the selected day agenda including spanning blocks',()=>{
+ const range=calendarRange('2026-11-26','month');
+ const data={bookings:[{id:1,status:'CONFIRMED',customer_name:'Customer',service_name:'Diagnosis',duration_minutes:60,confirmed_start:parseAdelaide('2026-11-26','09:00'),confirmed_end:parseAdelaide('2026-11-26','10:00')}],blocks:[{label:'<Time away>',start_at:parseAdelaide('2026-11-25','15:00'),end_at:parseAdelaide('2026-11-27','10:00')}]};
+ const html=calendarPage(range,data,'token','2026-11-26');assert.equal((html.split('cal-month-grid')[1].split('cal-cell cal-outside').length-1)>=6,true);assert.match(html,/Thursday 26 November/);assert.match(html,/View booking 001/);assert.match(html,/&lt;Time away&gt;/);assert.match(html,/aria-current="date"/);assert.match(html,/view=week/);
+});

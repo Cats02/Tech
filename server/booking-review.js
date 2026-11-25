@@ -1,4 +1,4 @@
-import { escape } from './views.js';
+import { escape ,bookingReference} from './views.js';
 import { adelaideLocal, parseAdelaide, displayBookingTime } from './booking-time.js';
 import {assertAvailable} from './scheduling.js';
 
@@ -103,7 +103,7 @@ export function reviewPanel(row,history,conflicts,csrf,errors=[],saved=false) {
         ${errors.length?`<div role="alert" class="admin-notice">${errors.map(escape).join(' ')}</div>`:''}
         ${row.confirmed_start?`<p><strong>Scheduled:</strong> ${escape(displayBookingTime(row.confirmed_start))} – ${escape(displayBookingTime(row.confirmed_end))}</p>`:''}
         ${row.proposed_start?`<p><strong>Proposed:</strong> ${escape(displayBookingTime(row.proposed_start))}. A proposal does not reserve the time or confirm the appointment.</p>`:''}
-        ${conflicts.length?`<div class="admin-notice"><strong>Pending request conflict:</strong> other requests overlap this preferred time. Review each before confirming.<ul>${conflicts.map(c=>`<li><a href="/admin/bookings/${c.id}">Request #${c.id}</a> — ${escape(displayBookingTime(c.preferred_start))}</li>`).join('')}</ul></div>`:''}
+        ${conflicts.length?`<div class="admin-notice"><strong>Pending request conflict:</strong> other requests overlap this preferred time. Review each before confirming.<ul>${conflicts.map(c=>`<li><a href="/admin/bookings/${c.id}">Request ${bookingReference(c.id)}</a> — ${escape(displayBookingTime(c.preferred_start))}</li>`).join('')}</ul></div>`:''}
         ${actions.includes('accept')?actionForm('accept','Accept',`<p>Reserves ${row.duration_minutes} minutes. Contact the customer after accepting.</p><label for="accept-slot">Appointment time</label><select id="accept-slot" name="slot">
             <option value="preferred">Preferred time</option>${row.alternative_start?'<option value="alternative">Second preference</option>':''}
             ${row.proposed_start?'<option value="proposed" selected>Proposed time</option>':''}<option value="custom">Custom date/time below</option></select>${timeFields('accept')}`):''}

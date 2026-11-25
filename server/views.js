@@ -1,3 +1,8 @@
+export function bookingReference(id) {
+    const digits=String(id);
+    if(!/^[1-9]\d*$/.test(digits))return '—';
+    return digits.padStart(3,'0');
+}
 export function escape(value) {
     return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 }

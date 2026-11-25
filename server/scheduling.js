@@ -1,5 +1,5 @@
 import {parseAdelaide,adelaideLocal,displayBookingTime} from './booking-time.js';
-import {escape,layout} from './views.js';
+import {escape,layout,bookingReference} from './views.js';
 import {adminNav} from './services.js';
 const error=(message,status=409)=>Object.assign(new Error(message),{status});
 export const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -146,19 +146,32 @@ export function calendarRange(day,view){
     const previous=new Date(first+'T12:00:00Z');previous.setUTCMonth(previous.getUTCMonth()-1);
     return {first,last,days:Math.round((new Date(last)-new Date(first))/86400000),previous:previous.toISOString().slice(0,10),next:last,view:'month'};
 }
-export function calendarPage(range,data,csrf){
+export function calendarPage(range,data,csrf,selectedDay=''){
+    const today=adelaideLocal(new Date()).slice(0,10);
+    const selected=validDay(selectedDay)&&selectedDay>=range.first&&selectedDay<range.last?selectedDay:today>=range.first&&today<range.last?today:range.first;
+    const dateLabel=(day,options)=>new Intl.DateTimeFormat('en-AU',{timeZone:'UTC',...options}).format(new Date(day+'T12:00:00Z'));
+    const time=value=>new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Adelaide',hour:'numeric',minute:'2-digit'}).format(new Date(value));
+    const url=day=>`/admin/calendar?date=${day}&view=${range.view}`;
+    const events=[...data.bookings.map(b=>({id:b.id,status:b.status,kind:b.status.toLowerCase(),title:b.service_name,name:b.customer_name,
+        start:new Date(b.confirmed_start||b.proposed_start||b.preferred_start),end:new Date(b.confirmed_end||new Date(new Date(b.confirmed_start||b.proposed_start||b.preferred_start).getTime()+b.duration_minutes*60000)),proposed:b.status==='PENDING'&&Boolean(b.proposed_start)})),
+        ...data.blocks.map(b=>({status:'BLOCKED',kind:'blocked',title:b.label,name:'Unavailable',start:new Date(b.start_at),end:new Date(b.end_at)}))].sort((a,b)=>a.start-b.start);
+    const forDay=day=>{const start=parseAdelaide(day,'00:00'),end=parseAdelaide(shiftDay(day,1),'00:00');return events.filter(e=>e.start<end&&e.end>start);};
+    const status=e=>e.status+(e.proposed?' · PROPOSED':'');
     const cells=[];
+    const offset=range.view==='month'?(new Date(range.first+'T12:00:00Z').getUTCDay()+6)%7:0;
+    for(let i=0;i<offset;i++)cells.push('<div class="cal-cell cal-outside" aria-hidden="true"></div>');
     for(let i=0;i<range.days;i++){
-        const day=shiftDay(range.first,i),from=parseAdelaide(day,'00:00'),to=parseAdelaide(shiftDay(day,1),'00:00');
-        const bookings=data.bookings.filter(b=>{const s=new Date(b.confirmed_start||b.proposed_start||b.preferred_start);return s<to&&new Date(s.getTime()+b.duration_minutes*60000)>from;});
-        const blocks=data.blocks.filter(b=>new Date(b.start_at)<to&&new Date(b.end_at)>from);
-        cells.push(`<section class="calendar-day"><h2>${escape(dayNames[new Date(day+'T12:00:00Z').getUTCDay()])} ${escape(day)}</h2>
-            ${bookings.map(b=>`<p><a href="/admin/bookings/${b.id}"><strong>${escape(b.status)}${b.status==='PENDING'&&b.proposed_start?' · PROPOSED':''}</strong> — ${escape(b.customer_name)}<br>${escape(b.service_name)}<br>${escape(displayBookingTime(b.confirmed_start||b.proposed_start||b.preferred_start))}</a></p>`).join('')}
-            ${blocks.map(b=>`<p><strong>BLOCKED</strong> — ${escape(b.label)}<br>${escape(displayBookingTime(b.start_at))} – ${escape(displayBookingTime(b.end_at))}</p>`).join('')}
-            ${!bookings.length&&!blocks.length?'<p>No entries</p>':''}</section>`);
+        const day=shiftDay(range.first,i),entries=forDay(day),label=dateLabel(day,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+        cells.push(`<section class="cal-cell${day===selected?' cal-selected':''}${day===today?' cal-today':''}"><h2><a class="cal-date" href="${url(day)}#calendar-agenda" aria-label="${escape(label)}, ${entries.length} entries"${day===selected?' aria-current="date"':''}><span>${Number(day.slice(-2))}</span><span class="cal-count">${entries.length?entries.length+(entries.length===1?' entry':' entries'):''}</span></a></h2>
+            <div class="cal-cell-events">${entries.slice(0,2).map(e=>`${e.id?`<a href="/admin/bookings/${Number(e.id)}"`:'<div'} class="cal-event cal-${escape(e.kind)}"><strong>${escape(time(e.start))}</strong><span>${escape(e.title)}</span>${e.id?`<span class="cal-event-customer">${escape(e.name)}</span>`:''}<small>${escape(status(e))}</small>${e.id?'</a>':'</div>'}`).join('')}${entries.length>2?`<a class="cal-more" href="${url(day)}#calendar-agenda">+${entries.length-2} more</a>`:''}</div></section>`);
     }
-    return layout('Calendar',`${adminNav(csrf)}<p>All times are Adelaide time. PENDING requests do not reserve appointments.</p>
-        <nav class="admin-nav" aria-label="Calendar views"><a href="/admin/calendar?date=${range.first}&view=month">Month</a><a href="/admin/calendar?date=${range.first}&view=week">Week</a>
-        <a href="/admin/calendar?date=${range.previous}&view=${range.view}">Previous</a><a href="/admin/calendar?date=${range.next}&view=${range.view}">Next</a><a href="/admin/calendar?view=${range.view}">Today</a></nav>
-        <p>${range.first} to ${shiftDay(range.last,-1)}</p><div class="calendar-grid">${cells.join('')}</div>`);
+    while(cells.length%7)cells.push('<div class="cal-cell cal-outside" aria-hidden="true"></div>');
+    const agenda=forDay(selected);
+    const heading=range.view==='month'?dateLabel(range.first,{month:'long',year:'numeric'}):`${dateLabel(range.first,{day:'numeric',month:'short'})} – ${dateLabel(shiftDay(range.last,-1),{day:'numeric',month:'short',year:'numeric'})}`;
+    return layout('Calendar',`${adminNav(csrf)}<div class="cal-toolbar"><h2>${escape(heading)}</h2><nav aria-label="Calendar navigation"><a href="${url(range.previous)}" aria-label="Previous ${range.view}">‹</a><a href="${url(range.next)}" aria-label="Next ${range.view}">›</a><a href="/admin/calendar?view=${range.view}">Today</a></nav><nav class="cal-view-toggle" aria-label="Calendar views"><a href="/admin/calendar?date=${selected}&view=month"${range.view==='month'?' aria-current="page"':''}>Month</a><a href="/admin/calendar?date=${selected}&view=week"${range.view==='week'?' aria-current="page"':''}>Week</a></nav></div>
+        <div class="cal-legend"><span><i class="cal-dot confirmed" aria-hidden="true"></i>Confirmed</span><span><i class="cal-dot pending" aria-hidden="true"></i>Pending request</span><span><i class="cal-dot blocked" aria-hidden="true"></i>Blocked</span><span class="cal-timezone">All times in Adelaide</span></div>
+        <div class="cal-layout"><div><div class="cal-board"><div class="cal-weekdays" aria-hidden="true">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<span>${d}</span>`).join('')}</div><div class="cal-month-grid">${cells.join('')}</div></div><p class="cal-help">Pending requests do not reserve time. Select a date to review its appointments.</p></div>
+        <section id="calendar-agenda" tabindex="-1" class="cal-agenda" aria-labelledby="calendar-agenda-title"><p class="admin-eyebrow">SELECTED DAY</p><h2 id="calendar-agenda-title">${escape(dateLabel(selected,{weekday:'long',day:'numeric',month:'long'}))}</h2><p class="cal-agenda-count">${agenda.length} ${agenda.length===1?'entry':'entries'}</p>
+            ${agenda.map(e=>`<article class="cal-agenda-entry"><span class="cal-status cal-${escape(e.kind)}">${escape(status(e))}</span><h3>${escape(time(e.start))} – ${escape(time(e.end))}</h3><h4>${escape(e.title)}</h4><p>${escape(e.name)}</p>${adelaideLocal(e.start).slice(0,10)!==selected||adelaideLocal(e.end).slice(0,10)!==selected?`<p class="cal-agenda-dates">${escape(displayBookingTime(e.start))}<br>to ${escape(displayBookingTime(e.end))}</p>`:''}${e.id?`<a class="button button-primary" href="/admin/bookings/${Number(e.id)}">View booking ${bookingReference(e.id)}</a>`:'<p>Appointments cannot be accepted during this blocked period.</p>'}</article>`).join('')||'<p class="cal-agenda-empty">No appointments or blocked periods for this day.</p>'}
+        </section></div>`);
 }

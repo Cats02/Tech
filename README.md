@@ -175,3 +175,8 @@ Import 008-customer-deletion.sql before deploying this change. It makes bookings
 ## Public availability calendar
 
 The initial booking step offers a month calendar for the selected service. Green labelled days have at least one full-duration slot; red labelled days have no available slot (closed, occupied, past or outside the booking horizon). Public month responses contain only date/boolean pairs and are rate limited with the booking routes. The calendar uses three bounded database reads per month, includes confirmed reservations and blocked periods, and never exposes customer information. Availability is rechecked when saving or accepting requests. Native date inputs remain usable if JavaScript/calendar loading fails. After Show Available Times, the initial service/date section is replaced by a Change service or dates link and the request form. No migration required.
+
+
+## Admin calendar and booking references
+
+Month/week views now use a Monday-first seven-column calendar with labelled status chips and a selected-day agenda. On phones, calendar cells show date/entry counts and the complete agenda appears below. Date links work without JavaScript, preserve the view and focus the agenda. Each day shows two compact entries plus a link to the complete daily agenda. Multi-day reservations appear on every overlapping day. Existing scheduling/authentication behavior is unchanged. Booking references use at least three digits (001, 002, …, 1000) in admin screens and newly generated emails, while URLs and underlying database IDs remain unchanged. No migration required. Previously delivered emails are unchanged.

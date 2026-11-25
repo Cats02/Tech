@@ -9,7 +9,7 @@ test('Gmail configuration holds delivery unless all required settings are safe',
  for(const changed of [{MAIL_TEST_RECIPIENT:''},{SMTP_HOST:'evil.test'},{SMTP_PORT:'25'},{MAIL_FROM:'other@example.test'},{SMTP_PASSWORD:'YOUR_PASSWORD'},{MAIL_FROM:'x\r\nBcc:evil@example.test'}])assert.equal(mailConfig({...env,...changed}).ready,false);
 });
 test('email templates redirect test recipients, escape HTML and distinguish proposals',()=>{
- const message=messageFor(event,mailConfig(env));assert.equal(message.to,'test@example.test');assert.match(message.subject,/^\[TEST\]/);assert.match(message.html,/&lt;Customer&gt;/);assert.doesNotMatch(JSON.stringify(message),/customer@example.test/);
+ const message=messageFor(event,mailConfig(env));assert.match(message.text,/Booking 002/);assert.match(message.html,/Booking 002/);assert.equal(message.to,'test@example.test');assert.match(message.subject,/^\[TEST\]/);assert.match(message.html,/&lt;Customer&gt;/);assert.doesNotMatch(JSON.stringify(message),/customer@example.test/);
  assert.match(messageFor({...event,event_type:'proposed'},mailConfig(env)).text,/not reserved or confirmed/);
  assert.equal(currentEmail(event),true);assert.equal(currentEmail({...event,current_version:2}),false);assert.equal(currentEmail({...event,booking_status:'CANCELLED'}),false);
 });

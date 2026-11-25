@@ -195,7 +195,7 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
     app.get('/admin/calendar',async(req,res)=>{
         if(!schedulingRepository)return res.status(404).send('Calendar unavailable.');
         const range=calendarRange(req.query.date,req.query.view);
-        res.send(calendarPage(range,await schedulingRepository.calendar(parseAdelaide(range.first,'00:00'),parseAdelaide(range.last,'00:00')),req.session.csrf));
+        res.send(calendarPage(range,await schedulingRepository.calendar(parseAdelaide(range.first,'00:00'),parseAdelaide(range.last,'00:00')),req.session.csrf,req.query.date));
     });
     app.get('/admin/settings',async(req,res)=>{
         if(!schedulingRepository)return res.status(404).send('Settings unavailable.');
