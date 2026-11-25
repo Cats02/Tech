@@ -160,3 +160,8 @@ Local tests use fake SMTP and database fixtures. Real MySQL migration/transactio
 Local review updated Nodemailer to the patched version recorded in package-lock.json. The full npm audit returned zero known vulnerabilities at review time. This is a point-in-time dependency check, not a guarantee of security. The 38 automated tests pass, including Hostinger require compatibility, authentication, CSRF, transactions with test doubles, and email retries. Anonymous staging checks verified admin redirects/no-store and private-file blocking. Browser fixtures verified booking/review/calendar/customer/email layouts at five widths (320–1440px) with text enlarged to 140%. Admin/booking headers now scroll normally so headings and focused fields remain visible; the skip link has a focusable main destination.
 
 These checks do not substitute for a real MySQL integration run or assistive-technology testing. Before production, complete the steps in LAUNCH-CHECKLIST.md. Keep MAIL_MODE=test and preserve the main branch/live domain until those steps and the owner’s launch decision. No new SQL migration is needed for the phase 8 dependency/header changes.
+
+
+## Admin presentation refresh
+
+Shared private screens use a compact branded header, desktop sidebar with active section, wrapping mobile navigation, consistent forms and booking status labels. The dashboard shows live repository summary counts and management shortcuts. Unavailable summary counts are shown as an em dash rather than invented data. Authentication, CSRF checks, routes and database writes are unchanged. No migration is required. Verified the 38-test suite and local workflow/browser fixtures at five widths with 140% text. Stage on spare before reviewing the new appearance.

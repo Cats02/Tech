@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { escape, layout } from './views.js';
+import { escape, layout, workspaceNav } from './views.js';
 
 export const appointmentTypes = ['Remote', 'On-site', 'Drop-off', 'Consultation'];
 const types = ['fixed', 'from', 'hour', 'quote'];
@@ -96,10 +96,7 @@ export function createServiceRepository(pool) {
     };
 }
 
-export function adminNav(csrf) {
-    return `<nav class="admin-nav" aria-label="Admin navigation"><a href="/admin">Dashboard</a><a href="/admin/bookings">Bookings</a><a href="/admin/calendar">Calendar</a><a href="/admin/services">Services &amp; Pricing</a><a href="/admin/customers">Customers</a><a href="/admin/settings">Settings</a><a href="/admin/emails">Emails</a>
-        <form action="/admin/logout" method="post"><input type="hidden" name="_csrf" value="${escape(csrf)}"><button type="submit">Log Out</button></form></nav>`;
-}
+export const adminNav = workspaceNav;
 export function serviceListPage(rows, csrf) {
     return layout('Services & Pricing', `${adminNav(csrf)}<p class="admin-notice">Prices are in AUD. Enable online booking and select appointment types to offer a service on the booking-request form.</p>
         <p><a class="button button-primary" href="/admin/services/new">Add Service</a></p>
