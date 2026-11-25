@@ -44,7 +44,7 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
     }));
     app.get('/health', (req, res) => res.json({ status: 'ok' }));
     app.use('/assets', express.static(`${root}assets`, { dotfiles: 'deny', index: false }));
-    for (const asset of ['style.css', 'script.js', 'admin.css']) app.get(`/${asset}`, (req, res) => res.sendFile(`${root}${asset}`));
+    for (const asset of ['style.css', 'script.js', 'admin.css', 'booking-calendar.js']) app.get(`/${asset}`, (req, res) => res.sendFile(`${root}${asset}`));
     const sendPublicPage = page => async (req, res) => {
         const html = readFileSync(`${root}${page}`, 'utf8');
         if (!html.includes('<!-- services:')) return res.sendFile(`${root}${page}`);
@@ -97,7 +97,7 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
         return key;
     }
     const bookingPage=async(req,services,selected,key,values={},errors=[])=>{
-        const showDetails=!schedulingRepository||req.method==='POST'||validDay(req.query.date);
+        const showDetails=Boolean(selected)&&(!schedulingRepository||req.method==='POST'||validDay(req.query.date));
         let html=bookingFormPage(services,selected,req.session.csrf,key,values,errors,new Date(),showDetails);
         if(schedulingRepository){
             const day=validDay(req.body?.preferred_date)?req.body.preferred_date:validDay(req.query.date)?req.query.date:adelaideLocal(new Date()).slice(0,10);
@@ -105,15 +105,25 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
             const slots=selected&&showDetails?await schedulingRepository.slots(selected,day):[],secondSlots=selected&&showDetails&&second?await schedulingRepository.slots(selected,second):[];
             const options=(times,chosen)=>times.map(t=>`<option value="${t}"${t===chosen?' selected':''}>${t}</option>`).join('');
             // Replace the original preference inputs with server-generated available choices.
-            html=html.replace('<button class="button button-secondary" type="submit">Choose Service</button>',`<p>Choose your service and dates, then show available times to continue.</p><label for="slot-date">Date to check</label><input id="slot-date" name="date" type="date" value="${day}" required>
+            html=html.replace('<button class="button button-secondary" type="submit">Choose Service</button>',`<p>Choose your service and dates, then show available times to continue.</p><section class="booking-calendar" aria-label="Available booking days" data-booking-calendar><h2>Choose an available day</h2><p>Green: times available. Red: closed or fully booked. Availability is for the selected service and can change.</p><label for="calendar-target">Choose date for</label><select id="calendar-target"><option value="date">Preferred date</option><option value="date2">Second preference</option></select><div class="booking-calendar-controls"><button type="button" data-calendar-prev aria-label="Previous month">Previous</button><h3 data-calendar-month></h3><button type="button" data-calendar-next aria-label="Next month">Next</button></div><p data-calendar-status role="status">Select a service to see available days.</p><div class="booking-calendar-days" data-calendar-days></div></section><label for="slot-date">Date to check</label><input id="slot-date" name="date" type="date" value="${day}" required>
                 <label for="slot-date2">Second date to check (optional)</label><input id="slot-date2" name="date2" type="date" value="${second}"><button class="button button-secondary" type="submit">Show Available Times</button>`);
             html=html.replace(/<input id="booking-preferred_date"[^>]*>/,`<input id="booking-preferred_date" name="preferred_date" type="date" value="${day}" readonly>`)
-                .replace(/<input id="booking-preferred_time"[^>]*>/,`<select id="booking-preferred_time" name="preferred_time" required><option value="">${slots.length?'Select an available time':'No available times — choose another date above'}</option>${options(slots,values.preferred_time)}</select>`)
+                .replace(/<input id="booking-preferred_time"[^>]*>/,`<select id="booking-preferred_time" name="preferred_time" required><option value="">${slots.length?'Select an available time':'No available times — use Change service or dates'}</option>${options(slots,values.preferred_time)}</select>`)
                 .replace(/<input id="booking-alternative_date"[^>]*>/,`<input id="booking-alternative_date" name="alternative_date" type="date" value="${second}" readonly>`)
                 .replace(/<input id="booking-alternative_time"[^>]*>/,`<select id="booking-alternative_time" name="alternative_time"${second?' required':''}><option value="">${second?'Select a second available time':'Choose a second date above if needed'}</option>${options(secondSlots,values.alternative_time)}</select>`);
         }
+        if(schedulingRepository&&!showDetails)html=html.replace('</body>','<script src="/booking-calendar.js" defer></script></body>');
         return html;
     };
+    app.get('/book/availability',async(req,res)=>{
+        if(!schedulingRepository?.monthAvailability)return res.sendStatus(404);
+        const month=typeof req.query.month==='string'?req.query.month:'';
+        const today=adelaideLocal(new Date()).slice(0,10),last=adelaideLocal(new Date(Date.now()+366*86400000)).slice(0,7);
+        if(!/^\d{4}-\d{2}$/.test(month)||!validDay(month+'-01')||month<today.slice(0,7)||month>last)return res.status(422).json({error:'Choose a month within the next year.'});
+        const services=await serviceRepository.list(true),service=services.find(s=>String(s.id)===req.query.service&&bookable(s));
+        if(!service)return res.status(422).json({error:'Choose an available service.'});
+        res.json({month,days:await schedulingRepository.monthAvailability(service,month)});
+    });
     app.get('/book',async(req,res)=>{
         const services=await serviceRepository.list(true);
         const selected=services.find(s=>String(s.id)===req.query.service&&bookable(s));

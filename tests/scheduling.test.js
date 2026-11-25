@@ -1,3 +1,4 @@
+import {adelaideLocal} from '../server/booking-time.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
@@ -54,7 +55,26 @@ test('public form offers available times only; calendar/settings remain admin-on
     }
     const response=await request(app).get('/book?service=4&date=2027-02-01');
     assert.equal(response.status,200);assert.match(response.text,/<select id="booking-preferred_time"/);assert.match(response.text,/<option value="09:00"/);
-    assert.doesNotMatch(response.text,/<input id="booking-preferred_time"/);assert.match(response.text,/Show Available Times/);
+    assert.doesNotMatch(response.text,/<input id="booking-preferred_time"/);assert.doesNotMatch(response.text,/booking-service-choice|Show Available Times/);assert.match(response.text,/Change service or dates/);
     for(const path of ['/admin/calendar','/admin/settings'])assert.equal((await request(app).get(path)).status,303);
     assert.equal((await request(app).post('/admin/settings/hours').type('form').send({})).status,403);
 });
+
+ test('month availability endpoint is bounded and returns dates without booking details',async()=>{
+ const service={id:4,visible:1,online_booking:1,appointment_types:'Remote'};let called=0;
+ const month=adelaideLocal(new Date()).slice(0,7);
+ const app=createApp({config:{production:false,origin:'http://localhost:3000',secret:'s'.repeat(64)},sessionStore:new session.MemoryStore(),repository:{consumeRateLimit:async()=>true},serviceRepository:{list:async()=>[service]},bookingRepository:{},schedulingRepository:{monthAvailability:async()=>{called++;return [{date:month+'-01',available:false}];}}});
+ const result=await request(app).get('/book/availability?service=4&month='+month);assert.equal(result.status,200);assert.deepEqual(result.body,{month,days:[{date:month+'-01',available:false}]});assert.match(result.headers['cache-control'],/no-store/);
+ for(const query of ['service=999&month='+month,'service=4&month=1999-01','service=4&month=2099-01','service=4&month=2026-99'])assert.equal((await request(app).get('/book/availability?'+query)).status,422);assert.equal(called,1);
+ });
+
+ test('month availability respects full service duration and blocked reservations',async()=>{
+ const day=adelaideLocal(new Date(Date.now()+7*86400000)).slice(0,10),month=day.slice(0,7);let reservations=[];
+ const hours=Array.from({length:7},(_,weekday)=>({weekday,enabled:true,opens:'09:00',closes:'10:00'}));
+ const pool={query:async()=>[hours],execute:async sql=>[sql.includes('calendar_reservations')?reservations:[]]};
+ const repository=createSchedulingRepository(pool);
+ assert.equal((await repository.monthAvailability({duration_minutes:60},month)).find(d=>d.date===day).available,true);
+ assert.equal((await repository.monthAvailability({duration_minutes:90},month)).find(d=>d.date===day).available,false);
+ reservations=[{start_at:parseAdelaide(day,'09:00'),end_at:parseAdelaide(day,'10:00')}];
+ assert.equal((await repository.monthAvailability({duration_minutes:60},month)).find(d=>d.date===day).available,false);
+ });

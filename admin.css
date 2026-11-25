@@ -154,3 +154,18 @@
 
 .admin-delete-section { margin-top:40px; border-color:#bb7180 !important; }
 .admin-delete-button { color:var(--tech-text); background:#7d2538; border:1px solid #da8b9a; cursor:pointer; margin-top:24px; }
+
+.booking-calendar-controls { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:24px 0 12px; flex-wrap:wrap; }
+.booking-calendar-controls h3 { font-size:1rem; }
+.booking-calendar-controls button { padding:10px; min-height:44px; background:var(--tech-bg); color:var(--tech-text); border:1px solid var(--tech-border); border-radius:7px; cursor:pointer; }
+.booking-calendar-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:5px; margin:16px 0 24px; }
+.booking-calendar-weekday { text-align:center; font-size:.7rem; padding-bottom:6px; }
+.booking-day { min-width:0; min-height:62px; padding:6px 2px; display:grid; align-content:center; gap:3px; border:1px solid; border-radius:7px; font:inherit; }
+.booking-day strong { font-size:1rem; }
+.booking-day span { font-size:.65rem; overflow-wrap:anywhere; }
+.booking-day.available { background:#113a2b; border-color:#69c998; color:#c2f7d9; cursor:pointer; }
+.booking-day.unavailable { background:#381d29; border-color:#b37785; color:#edc2cc; opacity:1; }
+.booking-day[aria-pressed="true"] { outline:3px solid var(--tech-cyan); outline-offset:1px; }
+.booking-day:focus-visible { outline:3px solid var(--tech-text); outline-offset:2px; }
+.booking-calendar-controls button:disabled { opacity:.5; cursor:default; }
+@media(forced-colors:active){.booking-day{forced-color-adjust:auto}.booking-day[aria-pressed="true"]{outline:3px solid Highlight}}

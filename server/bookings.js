@@ -115,7 +115,7 @@ export function bookingFormPage(services,selected,csrf,key,values={},errors=[],n
         <p class="admin-notice">${bookingNotice}</p><button type="submit" class="button button-primary">Send Booking Request</button></form>`:'';
     return bookingLayout('Book an Appointment',`<p class="admin-notice">${bookingNotice} Dates and times are preferences, not reserved availability. All times are Adelaide time.</p>
         ${errors.length?`<div role="alert" class="admin-notice"><h2>Please check your request</h2><ul>${errors.map(e=>`<li>${escape(e)}</li>`).join('')}</ul></div>`:''}
-        ${available.length?choose:'<p>Online booking requests are not currently available. <a href="/#contact">Contact us to arrange an appointment.</a></p>'}${form}`);
+        ${available.length?(showDetails&&selected?`<p><a href="/book?service=${Number(selected.id)}">Change service or dates</a></p>`:choose):'<p>Online booking requests are not currently available. <a href="/#contact">Contact us to arrange an appointment.</a></p>'}${form}`);
 }
 export const receivedPage=()=>bookingLayout('Booking Request Received',`<p role="status" class="admin-notice">${bookingReceived}</p><p>Your request has been saved. This page does not confirm an appointment. Email notifications are handled separately. Contact us directly if you do not receive an update.</p><a href="/">Return home</a>`);
 export const bookingTermsPage=()=>bookingLayout('Booking Request Terms',`<div class="admin-card"><p>Version: ${TERMS_VERSION}</p><p>${bookingNotice}</p>

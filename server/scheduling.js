@@ -61,6 +61,18 @@ export function createSchedulingRepository(pool){
             const [blocks]=await pool.query("SELECT * FROM calendar_reservations WHERE kind='BLOCKED' AND end_at>UTC_TIMESTAMP() ORDER BY start_at");
             return {hours,blocks,version:settings.version};
         },
+        async monthAvailability(service,month){
+            const first=month+'-01',next=new Date(first+'T12:00:00Z');next.setUTCMonth(next.getUTCMonth()+1);
+            const last=next.toISOString().slice(0,10),start=parseAdelaide(first,'00:00'),end=parseAdelaide(last,'00:00');
+            const [hours]=await pool.query('SELECT * FROM business_availability');
+            const [busy]=await pool.execute('SELECT start_at,end_at FROM calendar_reservations WHERE start_at<? AND end_at>?',[end,start]);
+            const [confirmed]=await pool.execute("SELECT confirmed_start AS start_at,confirmed_end AS end_at FROM bookings WHERE status='CONFIRMED' AND confirmed_start<? AND confirmed_end>?",[end,start]);
+            const days=[];for(let day=first;day<last;day=shiftDay(day,1)){
+                const weekday=new Date(day+'T12:00:00Z').getUTCDay();
+                days.push({date:day,available:generateSlots(day,Number(service.duration_minutes),hours.find(h=>Number(h.weekday)===weekday),[...busy,...confirmed]).length>0});
+            }
+            return days;
+        },
         async slots(service,day){
             if(!validDay(day))return [];
             const start=parseAdelaide(day,'00:00'),end=parseAdelaide(shiftDay(day,1),'00:00');
