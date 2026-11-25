@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS business_availability (
+    weekday TINYINT UNSIGNED PRIMARY KEY,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    opens TIME NOT NULL DEFAULT '09:00:00',
+    closes TIME NOT NULL DEFAULT '17:00:00'
+) ENGINE=InnoDB;
+INSERT INTO business_availability (weekday) VALUES (0),(1),(2),(3),(4),(5),(6)
+    ON DUPLICATE KEY UPDATE weekday=VALUES(weekday);
+
+CREATE TABLE IF NOT EXISTS schedule_settings (
+    id TINYINT UNSIGNED PRIMARY KEY,
+    version INT UNSIGNED NOT NULL DEFAULT 1
+) ENGINE=InnoDB;
+INSERT INTO schedule_settings (id) VALUES (1) ON DUPLICATE KEY UPDATE id=VALUES(id);

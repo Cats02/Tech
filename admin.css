@@ -29,3 +29,8 @@
 .booking-form fieldset { margin-bottom: 16px; }
 .booking-decision { margin-block: 20px; }
 .booking-decision h3 { font-size: 1.3rem; }
+.calendar-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); gap:12px; }
+.calendar-day { min-width:0; padding:16px; background:var(--tech-panel); border:1px solid var(--tech-border); border-radius:12px; }
+.calendar-day h2 { font-size:1rem; }
+.calendar-day p { padding-block:10px; border-bottom:1px solid var(--tech-border); overflow-wrap:anywhere; }
+.calendar-day a { text-decoration:underline; text-underline-offset:.2em; }

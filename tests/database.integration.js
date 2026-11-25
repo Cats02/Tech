@@ -8,6 +8,7 @@ import { createServiceRepository, validateService } from '../server/services.js'
 import { createBookingRepository, validateBooking } from '../server/bookings.js';
 import { adelaideLocal } from '../server/booking-time.js';
 import { createReviewRepository } from '../server/booking-review.js';
+import {createSchedulingRepository} from '../server/scheduling.js';
 
 test('MySQL migrations, persistent sessions and atomic rate limits', async () => {
     if (process.env.ALLOW_TEST_DATABASE !== 'true' || !process.env.DB_NAME?.endsWith('_test')) {
@@ -17,6 +18,7 @@ test('MySQL migrations, persistent sessions and atomic rate limits', async () =>
     const sid = `test-${Date.now()}`;
     try {
         await migrate(pool); await migrate(pool);
+        await pool.query("UPDATE business_availability SET enabled=TRUE,opens='00:00:00',closes='23:59:00'");
         const store = new MySQLSessionStore(pool);
         const value = { cookie: { expires: new Date(Date.now() + 60000) }, adminId: 123 };
         await new Promise((resolve, reject) => store.set(sid, value, e => e ? reject(e) : resolve()));
@@ -57,7 +59,7 @@ test('MySQL migrations, persistent sessions and atomic rate limits', async () =>
             const latest=await services.get(serviceId);
             await services.save(serviceId,{...validated.value,amount_cents:5500,visible:true,online_booking:true,appointment_types:'Remote',version:latest.version},insert.insertId);
             const available=await services.get(serviceId);
-            const local=adelaideLocal(new Date(Date.now()+2*86400000));
+            const local=adelaideLocal(new Date(Date.now()+2*86400000)).slice(0,10)+'T10:00';
             const checked=validateBooking({name:'Booking integration',email,phone:'0412345678',appointment_type:'Remote',description:'Test request',
                 preferred_date:local.slice(0,10),preferred_time:local.slice(11),terms:'1'},available);
             assert.deepEqual(checked.errors,[]);
@@ -82,6 +84,17 @@ test('MySQL migrations, persistent sessions and atomic rate limits', async () =>
             assert.equal(approvals.filter(a=>a.status==='fulfilled').length,1);
             assert.equal(approvals.filter(a=>a.status==='rejected'&&a.reason.status===409).length,1);
             const confirmedId=approvals[0].status==='fulfilled'?bookingId:second;
+            const schedule=createSchedulingRepository(pool),settings=await schedule.settings();
+            const day=local.slice(0,10);
+            await assert.rejects(schedule.addBlock({version:String(settings.version),label:'Conflicting test block',start_date:day,end_date:day,start_time:'10:00',end_time:'11:00'}),{status:409});
+            const closed={version:String(settings.version)};
+            for(let d=0;d<7;d++){closed[`open_${d}`]='09:00';closed[`close_${d}`]='17:00';}
+            await assert.rejects(schedule.saveHours(closed),{status:409});
+            await schedule.addBlock({version:String(settings.version),label:'Test block',start_date:day,end_date:day,start_time:'13:00',end_time:'14:00'});
+            const blockedChoices=await schedule.slots(await services.get(serviceId),day);
+            assert.ok(!blockedChoices.includes('12:15'));assert.ok(blockedChoices.includes('14:00'));
+            const afterBlock=await schedule.settings();const testBlock=afterBlock.blocks.find(b=>b.label==='Test block');
+            await schedule.removeBlock(testBlock.id,String(afterBlock.version));
             const confirmedReview=await review.details(confirmedId);
             await review.act(confirmedId,{action:'cancel',version:String(confirmedReview.row.review_version),note:'Test cancellation'},insert.insertId);
             const [[reservationCount]]=await pool.execute('SELECT COUNT(*) AS total FROM calendar_reservations WHERE booking_id=?',[confirmedId]);

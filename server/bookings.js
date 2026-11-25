@@ -1,6 +1,7 @@
 import { escape, layout } from './views.js';
 import { adminNav, formatPrice, appointmentTypes } from './services.js';
 import { parseAdelaide, adelaideLocal, displayBookingTime } from './booking-time.js';
+import {assertAvailable} from './scheduling.js';
 
 export const TERMS_VERSION='booking-request-2026-11-v1';
 export const bookingNotice='Your appointment is not confirmed until it has been reviewed and approved by Everbright Digital.';
@@ -37,12 +38,13 @@ export function validateBooking(body, service, now=new Date()) {
     return {errors,value:{name,email,phone,address,description,appointment_type,preferred_start,alternative_start}};
 }
 
-export function createBookingRepository(pool) {
+export function createBookingRepository(pool,{enforceAvailability=true}={}) {
     return {
         async submit(serviceId,value,key) {
             const db=await pool.getConnection();
             try {
                 await db.beginTransaction();
+                if(enforceAvailability){const [[lock]]=await db.query('SELECT id FROM calendar_lock WHERE id=1 FOR UPDATE');if(!lock)throw new Error('Calendar lock missing');}
                 // Serialise service edits with request creation so the snapshot and allowed types are current.
                 const [[service]]=await db.execute('SELECT * FROM services WHERE id = ? FOR UPDATE',[serviceId]);
                 const [[existing]]=await db.execute('SELECT id FROM bookings WHERE submission_key = ?',[key]);
@@ -50,6 +52,9 @@ export function createBookingRepository(pool) {
                 const recheck=validateBooking({...value,preferred_date:adelaideLocal(value.preferred_start).slice(0,10),preferred_time:adelaideLocal(value.preferred_start).slice(11),
                     alternative_date:value.alternative_start?adelaideLocal(value.alternative_start).slice(0,10):'',alternative_time:value.alternative_start?adelaideLocal(value.alternative_start).slice(11):'',terms:'1'},service);
                 if(recheck.errors.length)throw Object.assign(new Error('The service or request details have changed. Review the form and try again.'),{status:409});
+                if(enforceAvailability){
+                    for(const start of [value.preferred_start,value.alternative_start].filter(Boolean))await assertAvailable(db,start,new Date(start.getTime()+Number(service.duration_minutes)*60000),{grid:true});
+                }
                 await db.execute(`INSERT INTO customers (name,email,phone,address,notes) VALUES (?,?,?,?, '')
                     ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)`,[value.name,value.email,value.phone,value.address]);
                 const [[customer]]=await db.execute('SELECT id FROM customers WHERE email = ? AND phone = ?',[value.email,value.phone]);

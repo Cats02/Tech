@@ -1,5 +1,6 @@
 import { escape } from './views.js';
 import { adelaideLocal, parseAdelaide, displayBookingTime } from './booking-time.js';
+import {assertAvailable} from './scheduling.js';
 
 export const allowedActions={PENDING:['accept','propose','decline','cancel'],CONFIRMED:['complete','cancel'],COMPLETED:[],CANCELLED:[],DECLINED:[]};
 const fail=(message,status=409)=>Object.assign(new Error(message),{status});
@@ -26,7 +27,7 @@ export function reviewInput(row,body,now=new Date()) {
     return {action,note,start,end,status};
 }
 
-export function createReviewRepository(pool) {
+export function createReviewRepository(pool,{enforceAvailability=true}={}) {
     return {
         async details(id) {
             const [[row]]=await pool.execute(`SELECT b.*, COALESCE(r.version,0) AS review_version,r.proposed_start,r.proposed_end
@@ -58,6 +59,7 @@ export function createReviewRepository(pool) {
                     FROM bookings b LEFT JOIN booking_review r ON r.booking_id=b.id WHERE b.id=? FOR UPDATE`,[id]);
                 if(!row)throw fail('Booking not found.',404);
                 const value=reviewInput(row,body);
+                if(enforceAvailability&&value.start)await assertAvailable(db,value.start,value.end,{ignoreBookingId:id});
                 if(value.start) {
                     const [overlaps]=await db.execute(`SELECT id FROM calendar_reservations WHERE start_at<? AND end_at>?
                         AND (booking_id IS NULL OR booking_id<>?) LIMIT 1 FOR UPDATE`,[value.end,value.start,id]);

@@ -10,6 +10,8 @@ import { loginPage, dashboardPage, layout } from './views.js';
 import { renderPublicServices, serviceListPage, serviceEditPage, validateService } from './services.js';
 import { bookable, validateBooking, bookingFormPage, receivedPage, bookingTermsPage, bookingListPage, bookingDetailPage } from './bookings.js';
 import { reviewPanel } from './booking-review.js';
+import {settingsPage,calendarPage,calendarRange,validDay} from './scheduling.js';
+import {adelaideLocal,parseAdelaide} from './booking-time.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const publicPages = ['index.html', 'about.html', 'privacy.html', 'cad-3d-printing.html', 'website-development.html'];
@@ -17,7 +19,7 @@ const analyticsHashes = [...new Set(publicPages.flatMap(page =>
     [...readFileSync(`${root}${page}`, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
         .filter(match => match[1].trim()).map(match => `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`)
 ))];
-export function createApp({ config, repository, sessionStore, serviceRepository, bookingRepository, reviewRepository }) {
+export function createApp({ config, repository, sessionStore, serviceRepository, bookingRepository, reviewRepository, schedulingRepository }) {
     if (!sessionStore) throw new Error('A persistent session store is required.');
     if (!serviceRepository) throw new Error('A service database repository is required.');
     if (!bookingRepository) throw new Error('A booking database repository is required.');
@@ -92,10 +94,27 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
         req.session.bookingKeys=[...(req.session.bookingKeys||[]).slice(-4),key];
         return key;
     }
+    const bookingPage=async(req,services,selected,key,values={},errors=[])=>{
+        let html=bookingFormPage(services,selected,req.session.csrf,key,values,errors);
+        if(schedulingRepository&&selected){
+            const day=validDay(req.body?.preferred_date)?req.body.preferred_date:validDay(req.query.date)?req.query.date:adelaideLocal(new Date()).slice(0,10);
+            const second=validDay(req.body?.alternative_date)?req.body.alternative_date:validDay(req.query.date2)?req.query.date2:'';
+            const slots=await schedulingRepository.slots(selected,day),secondSlots=second?await schedulingRepository.slots(selected,second):[];
+            const options=(times,chosen)=>times.map(t=>`<option value="${t}"${t===chosen?' selected':''}>${t}</option>`).join('');
+            // Replace the original preference inputs with server-generated available choices.
+            html=html.replace('<button class="button button-secondary" type="submit">Choose Service</button>',`<p>Choose dates before entering your details. Changing dates reloads the form.</p><label for="slot-date">Date to check</label><input id="slot-date" name="date" type="date" value="${day}" required>
+                <label for="slot-date2">Second date to check (optional)</label><input id="slot-date2" name="date2" type="date" value="${second}"><button class="button button-secondary" type="submit">Show Available Times</button>`);
+            html=html.replace(/<input id="booking-preferred_date"[^>]*>/,`<input id="booking-preferred_date" name="preferred_date" type="date" value="${day}" readonly>`)
+                .replace(/<input id="booking-preferred_time"[^>]*>/,`<select id="booking-preferred_time" name="preferred_time" required><option value="">${slots.length?'Select an available time':'No available times — choose another date above'}</option>${options(slots,values.preferred_time)}</select>`)
+                .replace(/<input id="booking-alternative_date"[^>]*>/,`<input id="booking-alternative_date" name="alternative_date" type="date" value="${second}" readonly>`)
+                .replace(/<input id="booking-alternative_time"[^>]*>/,`<select id="booking-alternative_time" name="alternative_time"${second?' required':''}><option value="">${second?'Select a second available time':'Choose a second date above if needed'}</option>${options(secondSlots,values.alternative_time)}</select>`);
+        }
+        return html;
+    };
     app.get('/book',async(req,res)=>{
         const services=await serviceRepository.list(true);
         const selected=services.find(s=>String(s.id)===req.query.service&&bookable(s));
-        res.send(bookingFormPage(services,selected,req.session.csrf,selected?requestKey(req):''));
+        res.send(await bookingPage(req,services,selected,selected?requestKey(req):''));
     });
     app.post('/book',async(req,res)=>{
         const services=await serviceRepository.list(true);
@@ -103,9 +122,9 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
         const key=req.body.submission_key;
         if(typeof key!=='string'||!req.session.bookingKeys?.includes(key))return res.status(403).send(layout('Request rejected','<p>Reload the booking form and try again.</p>'));
         const result=validateBooking(req.body,selected);
-        if(result.errors.length)return res.status(422).send(bookingFormPage(services,bookable(selected)?selected:null,req.session.csrf,key,req.body,result.errors));
+        if(result.errors.length)return res.status(422).send(await bookingPage(req,services,bookable(selected)?selected:null,key,req.body,result.errors));
         if(!await repository.consumeRateLimit(`booking-contact:${result.value.email}:${result.value.phone}`,5,60*60*1000)){
-            res.set('Retry-After','3600');return res.status(429).send(bookingFormPage(services,selected,req.session.csrf,key,req.body,['Too many booking requests. Please wait an hour or contact us directly.']));
+            res.set('Retry-After','3600');return res.status(429).send(await bookingPage(req,services,selected,key,req.body,['Too many booking requests. Please wait an hour or contact us directly.']));
         }
         try{
             await bookingRepository.submit(selected.id,result.value,key);
@@ -114,7 +133,7 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
             res.redirect(303,'/book/received');
         }catch(error){
             if(error.status!==409)throw error;
-            res.status(409).send(bookingFormPage(services,selected,req.session.csrf,key,req.body,[error.message]));
+            res.status(409).send(await bookingPage(req,services,selected,key,req.body,[error.message]));
         }
     });
     app.get('/book/received',(req,res)=>req.session.bookingReceived?res.send(receivedPage()):res.redirect(303,'/book'));
@@ -155,6 +174,23 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
         res.send(dashboardPage(req.admin,req.session.csrf,summary));
     });
     app.get('/admin/bookings',async(req,res)=>res.send(bookingListPage(await bookingRepository.list(),req.session.csrf)));
+    app.get('/admin/calendar',async(req,res)=>{
+        if(!schedulingRepository)return res.status(404).send('Calendar unavailable.');
+        const range=calendarRange(req.query.date,req.query.view);
+        res.send(calendarPage(range,await schedulingRepository.calendar(parseAdelaide(range.first,'00:00'),parseAdelaide(range.last,'00:00')),req.session.csrf));
+    });
+    app.get('/admin/settings',async(req,res)=>{
+        if(!schedulingRepository)return res.status(404).send('Settings unavailable.');
+        res.send(settingsPage(await schedulingRepository.settings(),req.session.csrf,[],req.query.saved==='1'));
+    });
+    const changeSettings=work=>async(req,res)=>{
+        if(!schedulingRepository)return res.status(404).send('Settings unavailable.');
+        try{await work(req);res.redirect(303,'/admin/settings?saved=1');}
+        catch(error){if(![404,409,422].includes(error.status))throw error;res.status(error.status).send(settingsPage(await schedulingRepository.settings(),req.session.csrf,[error.message]));}
+    };
+    app.post('/admin/settings/hours',changeSettings(req=>schedulingRepository.saveHours(req.body)));
+    app.post('/admin/settings/blocks',changeSettings(req=>schedulingRepository.addBlock(req.body)));
+    app.post('/admin/settings/blocks/:id/remove',changeSettings(req=>schedulingRepository.removeBlock(req.params.id,req.body.version)));
     app.get('/admin/bookings/:id',async(req,res)=>{
         if(!/^[1-9]\d{0,18}$/.test(req.params.id))return res.status(404).send('Booking not found.');
         if(reviewRepository){

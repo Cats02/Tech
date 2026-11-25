@@ -91,7 +91,7 @@ test('database writes bind values, use server-side snapshots and roll back a fai
             return [{insertId:123}];
         }};
     const value=validateBooking({...valid,name:"Customer's name"},service).value;
-    await assert.rejects(createBookingRepository({getConnection:async()=>db}).submit(4,value,'a'.repeat(64)));
+    await assert.rejects(createBookingRepository({getConnection:async()=>db},{enforceAvailability:false}).submit(4,value,'a'.repeat(64)));
     assert.equal(rolledBack,true);assert.equal(committed,false);
     const booking=calls.find(c=>c.sql.startsWith('INSERT INTO bookings'));
     assert.match(booking.sql,/'PENDING'/);assert.doesNotMatch(booking.sql,/Customer's/);assert.ok(booking.args.includes(4500));

@@ -1,6 +1,6 @@
 # Everbright Digital
 
-Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–4 add secure administrator authentication, database-backed services/pricing, customer booking requests and manual approval controls. Calendar views, availability management, customer management and email are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
+Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–5 add secure administrator authentication, database-backed services/pricing, customer booking requests, manual approval, calendar views and availability management. Customer management and email are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
 
 ## Requirements
 
@@ -60,7 +60,7 @@ Before production: run both suites, dependency auditing, mobile/keyboard checks 
 2. Editable services/pricing, historical prices and public rendering (implemented).
 3. Pending-only booking requests and customer association (implemented).
 4. Manual approval, proposals, decline/cancel/complete and history (implemented).
-5. Calendar, weekly availability, blocked periods and transactional overlap prevention.
+5. Calendar, weekly availability, blocked periods and transactional overlap prevention (implemented).
 6. Customer management.
 7. Durable transactional email outbox and delivery retries.
 8. Full security, accessibility, responsive and deployment verification.
@@ -110,3 +110,17 @@ Every future scheduling writer (especially blocked periods and availability chan
 The dashboard now counts pending requests, confirmed upcoming appointments, today's confirmed appointments in Adelaide, and appointments completed in the last seven days. Admin notes and decision history are private. No transactional email is sent yet: the success message tells the operator to contact the customer directly. Configure email delivery in Phase 7 before relying on automated notifications.
 
 `npm test` checks allowed transitions, proposal semantics, saved durations, completion timing, stale forms, scheduling-lock use, overlap rejection, rollback, escaping, authentication and CSRF. The optional disposable-MySQL suite additionally races two approvals for the same interval and checks that exactly one wins, then checks cancellation releases capacity. It is NOT run against the staging or production customer database. After deployment use a test booking to verify a proposal remains PENDING, accepting reserves the chosen time, a conflicting acceptance is rejected, and cancellation records history and frees capacity.
+
+## Phase 5 deployment, calendar and availability
+
+Import `server/migrations/005-calendar-availability.sql` into the same staging database BEFORE pushing Phase 5, or run `npm run migrate`. New tables store weekly hours and an optimistic settings version. No credentials or packages change. **All seven days initially have bookings disabled. After deployment open Settings and enable your actual business days and opening/closing times. Until then, public booking forms show no available times and new approvals cannot be scheduled.** Existing bookings are retained.
+
+Admin Calendar offers month/week date ranges, previous/next/today navigation, booking detail links, status text, proposed pending times and blocked intervals. It is a responsive day-card calendar rather than a drag-and-drop scheduler. Cancelled/completed entries retain their historical times. Pending requests and proposals appear but never reserve capacity. All dates use Australia/Adelaide and correctly span daylight-saving days.
+
+Settings controls each weekday, opening and closing times, plus labelled multi-day blocked periods. Hours are same-day intervals (no overnight opening periods). Start must precede end even when the day is disabled. Changes that would exclude an existing future/ongoing confirmed appointment are rejected: first resolve that appointment. Blocks may span up to a year, must end in the future, and cannot overlap confirmed appointments or existing blocks. Removing a block never deletes bookings. Settings use the shared scheduling lock and version checks; stale forms receive a conflict rather than overwriting newer changes.
+
+The public booking form now asks customers to choose service and dates first, then select server-generated available times. This works without JavaScript. Changing dates reloads the form, so customers should do this before entering personal details. Times are offered every 15 minutes from opening; the full service duration must fit inside business hours and outside reservations/blocks. A second date/time is optional. Invalid, closed, past or fully occupied days offer no slots. Slot responses reveal no customer details or block labels.
+
+Public submissions acquire the same database scheduling lock as approvals/settings, then recheck both preferences against current hours and reservations before creating a PENDING request. Manually crafted times must align with the offered 15-minute grid. Accept/propose also recheck hours and reservations using the saved duration (administrators can choose any minute inside hours). A slot may disappear between viewing and submitting; the customer then receives an availability conflict and refreshed choices. Pending requests do not remove a slot, so competing requests still receive explicit conflict warnings for manual review.
+
+`npm test` covers slot boundaries/durations, closed days, reservation/block exclusion, adjacent intervals, DST/month/week ranges, guarded scheduling writes, settings conflicts, escaped calendar text, public choice-only controls, authentication and CSRF. The disposable MySQL suite enables test availability for its fixtures; NEVER point that suite at your real business database. Before live use, verify configured hours, a blocked period, a confirmed appointment and the public available-time dropdown on staging.

@@ -40,11 +40,11 @@ function fakeDatabase(overlap=false,failedAudit=false) {
     return {pool:{getConnection:async()=>db},calls,get committed(){return committed;},get rolledBack(){return rolledBack;}};
 }
 test('review locks scheduling before checking overlaps; failed actions roll back without approval',async()=>{
-    const clear=fakeDatabase();await createReviewRepository(clear.pool).act(1,{action:'accept',slot:'preferred',version:'0'},1);
+    const clear=fakeDatabase();await createReviewRepository(clear.pool,{enforceAvailability:false}).act(1,{action:'accept',slot:'preferred',version:'0'},1);
     assert.equal(clear.committed,true);assert.match(clear.calls[0],/calendar_lock.*FOR UPDATE/);
     assert.ok(clear.calls.find(c=>c.startsWith('INSERT INTO calendar_reservations')));
     for(const db of [fakeDatabase(true),fakeDatabase(false,true)]){
-        await assert.rejects(createReviewRepository(db.pool).act(1,{action:'accept',slot:'preferred',version:'0'},1));
+        await assert.rejects(createReviewRepository(db.pool,{enforceAvailability:false}).act(1,{action:'accept',slot:'preferred',version:'0'},1));
         assert.equal(db.committed,false);assert.equal(db.rolledBack,true);
     }
 });

@@ -97,7 +97,7 @@ export function createServiceRepository(pool) {
 }
 
 export function adminNav(csrf) {
-    return `<nav class="admin-nav" aria-label="Admin navigation"><a href="/admin">Dashboard</a><a href="/admin/bookings">Bookings</a><a href="/admin/services">Services &amp; Pricing</a>
+    return `<nav class="admin-nav" aria-label="Admin navigation"><a href="/admin">Dashboard</a><a href="/admin/bookings">Bookings</a><a href="/admin/calendar">Calendar</a><a href="/admin/services">Services &amp; Pricing</a><a href="/admin/settings">Settings</a>
         <form action="/admin/logout" method="post"><input type="hidden" name="_csrf" value="${escape(csrf)}"><button type="submit">Log Out</button></form></nav>`;
 }
 export function serviceListPage(rows, csrf) {
