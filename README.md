@@ -1,6 +1,6 @@
 # Everbright Digital
 
-Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–3 add secure administrator authentication, database-backed services/pricing and pending customer booking requests. Approval controls, calendar, customer management and email are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
+Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–4 add secure administrator authentication, database-backed services/pricing, customer booking requests and manual approval controls. Calendar views, availability management, customer management and email are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
 
 ## Requirements
 
@@ -59,7 +59,7 @@ Before production: run both suites, dependency auditing, mobile/keyboard checks 
 1. Backend/MySQL migrations and secure admin authentication (implemented).
 2. Editable services/pricing, historical prices and public rendering (implemented).
 3. Pending-only booking requests and customer association (implemented).
-4. Manual approval, proposals, decline/cancel/complete and history.
+4. Manual approval, proposals, decline/cancel/complete and history (implemented).
 5. Calendar, weekly availability, blocked periods and transactional overlap prevention.
 6. Customer management.
 7. Durable transactional email outbox and delivery retries.
@@ -96,3 +96,17 @@ The receipt page is generic and contains no customer data or public booking look
 Form POSTs require CSRF and same-origin checks, plus session-bound submission keys. Shared MySQL rate limits cover GETs and POSTs by IP, and valid submissions by normalised contact. A honeypot catches basic spam. Database errors never display a successful receipt. Public booking forms and admin pages have no third-party analytics scripts. The existing privacy page now describes the booking database; booking terms are at `/booking-terms`. Mail delivery is not implemented until Phase 7; the receipt clearly says no confirmation email is sent at this stage. Operators should check the admin queue and contact customers using the existing business communication channels.
 
 Verification: `npm test` covers timezones, validation, allowed services/types, consent, on-site addresses, XSS escaping, CSRF, private records, retry handling, rate limits and rollback on failed storage. `npm run test:database` additionally verifies real booking persistence, customer deduplication, snapshots and idempotency in a disposable `_test` database. Check a genuine test request in staging before accepting customer use; do not submit real customer data to disposable tests.
+
+## Phase 4 deployment and booking decisions
+
+Import `server/migrations/004-booking-review.sql` into the same staging database BEFORE pushing this phase to `spare`, or apply it with `npm run migrate` in a configured SSH shell. It creates the calendar lock, reservation, review-version and decision-history tables without changing existing bookings or customer records. Startup requires these tables and the calendar lock row. No new dependencies or environment variables are needed.
+
+Open a request under Admin → Bookings. PENDING requests offer Accept, Suggest Different Time, Decline and Cancel Booking. Accept can use the preferred time, second preference, latest proposal or a custom Adelaide date/time. The duration comes from the immutable booking snapshot, not the browser or current service settings. Acceptance requires a future time and reserves its entire duration. A proposal keeps the request PENDING, does not reserve time and must be discussed with the customer. Decline supports an optional note. CONFIRMED appointments offer cancellation or completion; completion is allowed only after the scheduled end. Closed requests retain their audit trail and cannot be reopened through these controls.
+
+All decisions require authentication, CSRF and a current review version. Replaying an old form returns a conflict. Status, reservation and audit writes commit together. Scheduling decisions take `calendar_lock` row 1 before reading/updating appointments, use locking overlap reads, and reject intervals overlapping other reservations or confirmed appointments. Adjacent intervals are allowed. Cancellation releases the reservation while preserving the appointment and history. Completion retains its historical reservation. Pending conflicts consider both preferred and second-choice intervals and are explicitly labelled in the review panel. Pending requests never silently reserve capacity or confirm one another.
+
+Every future scheduling writer (especially blocked periods and availability changes) MUST acquire the same calendar lock before changing reservations. This transaction discipline prevents concurrent confirmations from both winning; it is not a native MySQL exclusion constraint and must not be bypassed by direct scheduling writes. Calendar month/week UI, working hours and block-management screens are Phase 5. Phase 4 reserves appointments in the calendar data model but does not yet offer these screens.
+
+The dashboard now counts pending requests, confirmed upcoming appointments, today's confirmed appointments in Adelaide, and appointments completed in the last seven days. Admin notes and decision history are private. No transactional email is sent yet: the success message tells the operator to contact the customer directly. Configure email delivery in Phase 7 before relying on automated notifications.
+
+`npm test` checks allowed transitions, proposal semantics, saved durations, completion timing, stale forms, scheduling-lock use, overlap rejection, rollback, escaping, authentication and CSRF. The optional disposable-MySQL suite additionally races two approvals for the same interval and checks that exactly one wins, then checks cancellation releases capacity. It is NOT run against the staging or production customer database. After deployment use a test booking to verify a proposal remains PENDING, accepting reserves the chosen time, a conflicting acceptance is rejected, and cancellation records history and frees capacity.

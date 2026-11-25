@@ -61,9 +61,21 @@ export function createBookingRepository(pool) {
                 await db.commit();return result.insertId;
             }catch(error){await db.rollback();throw error;}finally{db.release();}
         },
-        async list() {const [rows]=await pool.query('SELECT id,status,customer_name,service_name,preferred_start,created_at FROM bookings ORDER BY created_at DESC LIMIT 200');return rows;},
+        async list() {const [rows]=await pool.query('SELECT id,status,customer_name,service_name,preferred_start,confirmed_start,created_at FROM bookings ORDER BY created_at DESC LIMIT 200');return rows;},
         async get(id) {const [[row]]=await pool.execute('SELECT * FROM bookings WHERE id = ?',[id]);return row;},
-        async pendingCount() {const [[row]]=await pool.query("SELECT COUNT(*) AS total FROM bookings WHERE status = 'PENDING'");return Number(row.total);}
+        async pendingCount() {const [[row]]=await pool.query("SELECT COUNT(*) AS total FROM bookings WHERE status = 'PENDING'");return Number(row.total);},
+        async summary() {
+            const now=new Date(),date=adelaideLocal(now).slice(0,10);
+            const nextDate=new Date(`${date}T00:00:00Z`);nextDate.setUTCDate(nextDate.getUTCDate()+1);
+            const today=parseAdelaide(date,'00:00'),tomorrow=parseAdelaide(nextDate.toISOString().slice(0,10),'00:00');
+            const [[row]]=await pool.execute(`SELECT
+                SUM(status='PENDING') AS pending,
+                SUM(status='CONFIRMED' AND confirmed_start>=?) AS upcoming,
+                SUM(status='CONFIRMED' AND confirmed_start>=? AND confirmed_start<?) AS today,
+                SUM(status='COMPLETED' AND updated_at>=?) AS completed
+                FROM bookings`,[now,today,tomorrow,new Date(now.getTime()-7*86400000)]);
+            return Object.fromEntries(Object.entries(row).map(([key,value])=>[key,Number(value||0)]));
+        }
     };
 }
 
@@ -106,12 +118,12 @@ export const bookingTermsPage=()=>bookingLayout('Booking Request Terms',`<div cl
     <p>Please provide accurate contact details. Contact Everbright Digital using the details on our website if you need to change or withdraw a request.</p>
     <p>We store your contact details and request in our business database to review, arrange and retain a history of services. Read our <a href="/privacy.html">Privacy Policy</a>. Do not submit passwords, payment information or sensitive device data.</p></div>`);
 export function bookingListPage(rows,csrf) {
-    return layout('Bookings',`${adminNav(csrf)}<p>Requests need manual review. Contact the customer to discuss the requested appointment.</p><div class="admin-service-list">${rows.map(r=>`<article class="admin-card"><h2><a href="/admin/bookings/${r.id}">Request #${r.id}</a></h2><p><strong>Status: ${escape(r.status)}</strong></p><p>${escape(r.customer_name)} — ${escape(r.service_name)}</p><p>Preferred: ${escape(displayBookingTime(r.preferred_start))}</p></article>`).join('')||'<p>No booking requests yet.</p>'}</div>`);
+    return layout('Bookings',`${adminNav(csrf)}<p>Open a request to review it and record your decision. Contact the customer after deciding.</p><div class="admin-service-list">${rows.map(r=>`<article class="admin-card"><h2><a href="/admin/bookings/${r.id}">Request #${r.id}</a></h2><p><strong>Status: ${escape(r.status)}</strong></p><p>${escape(r.customer_name)} — ${escape(r.service_name)}</p><p>${r.confirmed_start?'Scheduled':'Preferred'}: ${escape(displayBookingTime(r.confirmed_start||r.preferred_start))}</p></article>`).join('')||'<p>No booking requests yet.</p>'}</div>`);
 }
-export function bookingDetailPage(row,csrf) {
+export function bookingDetailPage(row,csrf,review='') {
     const details=[['Status',row.status],['Customer',row.customer_name],['Email',row.customer_email],['Mobile',row.customer_phone],['Service',row.service_name],
         ['Price at request',formatPrice(row)],['Duration at request',`${row.duration_minutes} minutes`],['Appointment type',row.appointment_type],['Address',row.address||'Not supplied'],
         ['Preferred',displayBookingTime(row.preferred_start)],['Second preference',row.alternative_start?displayBookingTime(row.alternative_start):'Not supplied'],
         ['Terms accepted',`${row.terms_version} — ${displayBookingTime(row.terms_accepted_at)}`]];
-    return layout(`Booking Request #${row.id}`,`${adminNav(csrf)}<div class="admin-card"><dl class="booking-details">${details.map(([k,v])=>`<dt>${escape(k)}</dt><dd>${escape(v)}</dd>`).join('')}</dl><h2>Description</h2><p class="service-full-description">${escape(row.description)}</p><p>Review this request and contact the customer to arrange an appointment.</p></div>`);
+    return layout(`Booking Request #${row.id}`,`${adminNav(csrf)}<div class="admin-card"><dl class="booking-details">${details.map(([k,v])=>`<dt>${escape(k)}</dt><dd>${escape(v)}</dd>`).join('')}</dl><h2>Description</h2><p class="service-full-description">${escape(row.description)}</p></div>${review}`);
 }

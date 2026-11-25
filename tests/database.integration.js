@@ -7,6 +7,7 @@ import { createRepository, MySQLSessionStore } from '../server/store.js';
 import { createServiceRepository, validateService } from '../server/services.js';
 import { createBookingRepository, validateBooking } from '../server/bookings.js';
 import { adelaideLocal } from '../server/booking-time.js';
+import { createReviewRepository } from '../server/booking-review.js';
 
 test('MySQL migrations, persistent sessions and atomic rate limits', async () => {
     if (process.env.ALLOW_TEST_DATABASE !== 'true' || !process.env.DB_NAME?.endsWith('_test')) {
@@ -71,8 +72,28 @@ test('MySQL migrations, persistent sessions and atomic rate limits', async () =>
             const secondBooking=await bookings.get(second);
             assert.equal(secondBooking.customer_id,customerId);assert.equal(secondBooking.amount_cents,9900);
             assert.equal((await bookings.get(bookingId)).amount_cents,5500);
+            const review=createReviewRepository(pool);
+            const data=await review.details(bookingId);
+            assert.ok(data.conflicts.some(c=>c.id===second));
+            const approvals=await Promise.allSettled([
+                review.act(bookingId,{action:'accept',slot:'preferred',version:'0'},insert.insertId),
+                review.act(second,{action:'accept',slot:'preferred',version:'0'},insert.insertId)
+            ]);
+            assert.equal(approvals.filter(a=>a.status==='fulfilled').length,1);
+            assert.equal(approvals.filter(a=>a.status==='rejected'&&a.reason.status===409).length,1);
+            const confirmedId=approvals[0].status==='fulfilled'?bookingId:second;
+            const confirmedReview=await review.details(confirmedId);
+            await review.act(confirmedId,{action:'cancel',version:String(confirmedReview.row.review_version),note:'Test cancellation'},insert.insertId);
+            const [[reservationCount]]=await pool.execute('SELECT COUNT(*) AS total FROM calendar_reservations WHERE booking_id=?',[confirmedId]);
+            assert.equal(Number(reservationCount.total),0);
+            assert.equal((await bookings.get(confirmedId)).status,'CANCELLED');
         } finally {
-            if(serviceId){await pool.execute('DELETE FROM bookings WHERE service_id = ?',[serviceId]);await pool.execute('DELETE FROM price_history WHERE service_id = ?',[serviceId]);await pool.execute('DELETE FROM services WHERE id = ?',[serviceId]);}
+            if(serviceId){
+                await pool.execute('DELETE FROM calendar_reservations WHERE booking_id IN (SELECT id FROM bookings WHERE service_id=?)',[serviceId]);
+                await pool.execute('DELETE FROM booking_events WHERE booking_id IN (SELECT id FROM bookings WHERE service_id=?)',[serviceId]);
+                await pool.execute('DELETE FROM booking_review WHERE booking_id IN (SELECT id FROM bookings WHERE service_id=?)',[serviceId]);
+                await pool.execute('DELETE FROM bookings WHERE service_id = ?',[serviceId]);await pool.execute('DELETE FROM price_history WHERE service_id = ?',[serviceId]);await pool.execute('DELETE FROM services WHERE id = ?',[serviceId]);
+            }
             if(customerId)await pool.execute('DELETE FROM customers WHERE id = ?',[customerId]);
             await pool.execute('DELETE FROM admin_users WHERE id = ?',[insert.insertId]);
         }

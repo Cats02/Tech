@@ -9,6 +9,7 @@ import { verifyPassword } from './passwords.js';
 import { loginPage, dashboardPage, layout } from './views.js';
 import { renderPublicServices, serviceListPage, serviceEditPage, validateService } from './services.js';
 import { bookable, validateBooking, bookingFormPage, receivedPage, bookingTermsPage, bookingListPage, bookingDetailPage } from './bookings.js';
+import { reviewPanel } from './booking-review.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const publicPages = ['index.html', 'about.html', 'privacy.html', 'cad-3d-printing.html', 'website-development.html'];
@@ -16,7 +17,7 @@ const analyticsHashes = [...new Set(publicPages.flatMap(page =>
     [...readFileSync(`${root}${page}`, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
         .filter(match => match[1].trim()).map(match => `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`)
 ))];
-export function createApp({ config, repository, sessionStore, serviceRepository, bookingRepository }) {
+export function createApp({ config, repository, sessionStore, serviceRepository, bookingRepository, reviewRepository }) {
     if (!sessionStore) throw new Error('A persistent session store is required.');
     if (!serviceRepository) throw new Error('A service database repository is required.');
     if (!bookingRepository) throw new Error('A booking database repository is required.');
@@ -149,13 +150,33 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
         res.clearCookie(cookieName, { path: '/', httpOnly: true, sameSite: 'strict', secure: config.production });
         res.redirect(303, '/admin/login');
     });
-    app.get('/admin', async (req, res) => res.send(dashboardPage(req.admin, req.session.csrf,await bookingRepository.pendingCount())));
+    app.get('/admin', async (req, res) => {
+        const summary=bookingRepository.summary?await bookingRepository.summary():await bookingRepository.pendingCount();
+        res.send(dashboardPage(req.admin,req.session.csrf,summary));
+    });
     app.get('/admin/bookings',async(req,res)=>res.send(bookingListPage(await bookingRepository.list(),req.session.csrf)));
     app.get('/admin/bookings/:id',async(req,res)=>{
         if(!/^[1-9]\d{0,18}$/.test(req.params.id))return res.status(404).send('Booking not found.');
+        if(reviewRepository){
+            const data=await reviewRepository.details(req.params.id);
+            if(!data)return res.status(404).send('Booking not found.');
+            return res.send(bookingDetailPage(data.row,req.session.csrf,reviewPanel(data.row,data.history,data.conflicts,req.session.csrf,[],req.query.saved==='1')));
+        }
         const row=await bookingRepository.get(req.params.id);
         if(!row)return res.status(404).send('Booking not found.');
         res.send(bookingDetailPage(row,req.session.csrf));
+    });
+    app.post('/admin/bookings/:id/review',async(req,res)=>{
+        if(!reviewRepository||!/^[1-9]\d{0,18}$/.test(req.params.id))return res.status(404).send('Booking not found.');
+        try{
+            await reviewRepository.act(req.params.id,req.body,req.admin.id);
+            res.redirect(303,`/admin/bookings/${req.params.id}?saved=1`);
+        }catch(error){
+            if(![404,409,422].includes(error.status))throw error;
+            const data=await reviewRepository.details(req.params.id);
+            if(!data)return res.status(404).send('Booking not found.');
+            res.status(error.status).send(bookingDetailPage(data.row,req.session.csrf,reviewPanel(data.row,data.history,data.conflicts,req.session.csrf,[error.message])));
+        }
     });
     app.get('/admin/services', async (req, res) => res.send(serviceListPage(await serviceRepository.list(), req.session.csrf)));
     app.get('/admin/services/new', (req, res) => res.send(serviceEditPage(null, [], req.session.csrf)));

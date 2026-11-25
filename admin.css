@@ -27,3 +27,5 @@
 .booking-details dd { margin-bottom: 10px; overflow-wrap: anywhere; }
 .booking-form a { text-decoration: underline; text-underline-offset: .15em; }
 .booking-form fieldset { margin-bottom: 16px; }
+.booking-decision { margin-block: 20px; }
+.booking-decision h3 { font-size: 1.3rem; }

@@ -4,6 +4,7 @@ import { createRepository, MySQLSessionStore } from './store.js';
 import { createApp } from './app.js';
 import { createServiceRepository } from './services.js';
 import { createBookingRepository } from './bookings.js';
+import { createReviewRepository } from './booking-review.js';
 
 // Hostinger's Passenger loader uses require(). Keep the entire import graph
 // free of top-level await; asynchronous startup belongs inside this function.
@@ -18,13 +19,18 @@ async function start() {
         await pool.query('SELECT id FROM price_history LIMIT 0');
         await pool.query('SELECT id FROM customers LIMIT 0');
         await pool.query('SELECT id FROM bookings LIMIT 0');
+        await pool.query('SELECT booking_id FROM booking_review LIMIT 0');
+        await pool.query('SELECT id FROM booking_events LIMIT 0');
+        await pool.query('SELECT id FROM calendar_reservations LIMIT 0');
+        const [[calendarLock]]=await pool.query('SELECT id FROM calendar_lock WHERE id=1');
+        if(!calendarLock)throw new Error('Missing calendar lock');
     } catch {
         console.error('Database unavailable or migrations missing. Run the migration command before starting.');
         await pool.end();
         process.exitCode = 1;
         return;
     }
-    const app = createApp({ config, repository: createRepository(pool, config.secret), sessionStore: new MySQLSessionStore(pool), serviceRepository: createServiceRepository(pool), bookingRepository:createBookingRepository(pool) });
+    const app = createApp({ config, repository: createRepository(pool, config.secret), sessionStore: new MySQLSessionStore(pool), serviceRepository: createServiceRepository(pool), bookingRepository:createBookingRepository(pool),reviewRepository:createReviewRepository(pool) });
     const server = app.listen(config.port, '0.0.0.0', () => console.log('Everbright application started.'));
     const cleanup = setInterval(async () => {
         try {
