@@ -36,11 +36,11 @@ test('passwords are salted, verified and bounded', async () => {
 });
 test('all anonymous admin paths redirect; private files are never served', async () => {
     const app = fixture();
-    for (const path of ['/admin', '/admin/bookings', '/admin/customers', '/admin/settings']) {
+    for (const path of ['/admin', '/admin/bookings', '/admin/customers', '/admin/settings', '/admin/calendar', '/admin/emails']) {
         const res = await request(app).get(path);
         assert.equal(res.status, 303); assert.equal(res.headers.location, '/admin/login');
     }
-    for (const path of ['/.env', '/server/config.js', '/package.json', '/.git/config', '/tests/auth.test.js']) {
+    for (const path of ['/.env', '/server/config.js', '/server/mail.js', '/server/migrations/007-email-outbox.sql', '/package.json', '/package-lock.json', '/.git/config', '/tests/auth.test.js', '/.local/email-preview.html']) {
         assert.equal((await request(app).get(path)).status, 404);
     }
 });

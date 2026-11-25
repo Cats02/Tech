@@ -10,7 +10,7 @@ export function layout(title, content) {
         <body class="admin-page"><header class="site-header"><div class="container navbar">
         <a href="/" class="logo" aria-label="Everbright Digital home"><img class="brand-logo" src="/assets/everbright-digital-header-logo.png" alt="Everbright Digital"></a>
         <a href="#admin-content">Skip to content</a></div></header>
-        <main id="admin-content" class="container admin-content"><h1>${escape(title)}</h1>${content}</main>
+        <main id="admin-content" tabindex="-1" class="container admin-content"><h1>${escape(title)}</h1>${content}</main>
         <script src="/script.js" defer></script></body></html>`;
 }
 export function loginPage(csrf, message = '') {
@@ -27,7 +27,7 @@ export function dashboardPage(admin, csrf, pending=0) {
     return layout('Dashboard', `<div class="admin-card"><p>Signed in as ${escape(admin.email)}.</p>
         <p><a class="button button-primary" href="/admin/services">Services &amp; Pricing</a></p>
         <p><a class="button button-secondary" href="/admin/bookings">Bookings — ${escape(count)} PENDING</a></p>
-        <p><a href="/admin/calendar">Calendar</a> · <a href="/admin/customers">Customers</a> · <a href="/admin/settings">Availability Settings</a></p>
+        <p><a href="/admin/calendar">Calendar</a> · <a href="/admin/customers">Customers</a> · <a href="/admin/settings">Availability Settings</a> · <a href="/admin/emails">Email Notifications</a></p>
         ${summary?`<dl class="booking-details"><dt>Confirmed upcoming bookings</dt><dd>${escape(summary.upcoming)}</dd><dt>Today's confirmed appointments (Adelaide)</dt><dd>${escape(summary.today)}</dd><dt>Completed in the last 7 days</dt><dd>${escape(summary.completed)}</dd></dl>`:''}
         <p>Booking requests require manual review. Open Bookings to review requests and contact the customer to arrange an appointment.</p>
         <form method="post" action="/admin/logout"><input type="hidden" name="_csrf" value="${escape(csrf)}">

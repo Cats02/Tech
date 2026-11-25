@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.21.0" },
+  "engines": {
+    "node": ">=22.21.0"
+  },
   "scripts": {
     "start": "node --env-file-if-exists=.env server/index.js",
     "migrate": "node --env-file-if-exists=.env server/migrate.js",
@@ -17,7 +19,9 @@
     "express-session": "^1.18.2",
     "helmet": "^8.1.0",
     "mysql2": "^3.14.0",
-    "nodemailer": "^7.0.0"
+    "nodemailer": "^10.6.1"
   },
-  "devDependencies": { "supertest": "^7.1.0" }
+  "devDependencies": {
+    "supertest": "^7.1.0"
+  }
 }

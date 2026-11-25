@@ -1,6 +1,6 @@
 # Everbright Digital
 
-Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–6 add secure administrator authentication, database-backed services/pricing, customer booking requests, manual approval, calendar views, availability and private customer management. Transactional email and final production hardening are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
+Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–7 add secure administrator authentication, database-backed services/pricing, customer booking requests, manual approval, calendar views, availability and private customer management. Transactional email and final production hardening are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
 
 ## Requirements
 
@@ -62,7 +62,7 @@ Before production: run both suites, dependency auditing, mobile/keyboard checks 
 4. Manual approval, proposals, decline/cancel/complete and history (implemented).
 5. Calendar, weekly availability, blocked periods and transactional overlap prevention (implemented).
 6. Customer management (implemented).
-7. Durable transactional email outbox and delivery retries.
+7. Durable transactional email outbox and delivery retries (implemented; five message types verified by the owner on staging).
 8. Full security, accessibility, responsive and deployment verification.
 
 Later MySQL scheduling will use a shared calendar lock row and database transactions for both acceptance and blocked-period updates; an unchecked query followed by an insert cannot safely prevent concurrent overlaps. UTC times will display using Australia/Adelaide. Current public content, pricing and enquiry functionality remain as-is until their respective phases.
@@ -153,3 +153,10 @@ Test mode replaces every recipient with MAIL_TEST_RECIPIENT and prefixes subject
 The web process polls every 30 seconds, five messages per pass, protected by a database named lock across instances. Up to five attempts use increasing delays. Errors shown in admin are generic and omit SMTP responses/credentials. Hosting may suspend an idle application: use the mail:work command in a separately configured scheduled job for reliable idle processing. SSH/cron does not inherit hPanel variables; configure its protected environment independently, never under public_html or in Git. Worker needs database credentials and the same email settings; do not print them. Queue delivery is at least once: a crash after SMTP acceptance but before recording SENT can cause a duplicate, despite stable Message-ID values. A decision made while a send is in flight cannot recall that message; the subsequent decision is queued separately.
 
 Local tests use fake SMTP and database fixtures. Real MySQL migration/transaction checks and Gmail delivery remain staging validation steps; no real email was sent during local tests. Gmail has account limits and may block hosting sign-ins; inspect the queue and Google account security if SMTP fails, without exposing passwords.
+
+
+## Phase 8 verification and launch gate
+
+Local review updated Nodemailer to the patched version recorded in package-lock.json. The full npm audit returned zero known vulnerabilities at review time. This is a point-in-time dependency check, not a guarantee of security. The 38 automated tests pass, including Hostinger require compatibility, authentication, CSRF, transactions with test doubles, and email retries. Anonymous staging checks verified admin redirects/no-store and private-file blocking. Browser fixtures verified booking/review/calendar/customer/email layouts at five widths (320–1440px) with text enlarged to 140%. Admin/booking headers now scroll normally so headings and focused fields remain visible; the skip link has a focusable main destination.
+
+These checks do not substitute for a real MySQL integration run or assistive-technology testing. Before production, complete the steps in LAUNCH-CHECKLIST.md. Keep MAIL_MODE=test and preserve the main branch/live domain until those steps and the owner’s launch decision. No new SQL migration is needed for the phase 8 dependency/header changes.
