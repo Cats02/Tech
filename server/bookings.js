@@ -130,5 +130,5 @@ export function bookingDetailPage(row,csrf,review='') {
         ['Price at request',formatPrice(row)],['Duration at request',`${row.duration_minutes} minutes`],['Appointment type',row.appointment_type],['Address',row.address||'Not supplied'],
         ['Preferred',displayBookingTime(row.preferred_start)],['Second preference',row.alternative_start?displayBookingTime(row.alternative_start):'Not supplied'],
         ['Terms accepted',`${row.terms_version} — ${displayBookingTime(row.terms_accepted_at)}`]];
-    return layout(`Booking Request #${row.id}`,`${adminNav(csrf)}<div class="admin-card"><dl class="booking-details">${details.map(([k,v])=>`<dt>${escape(k)}</dt><dd>${escape(v)}</dd>`).join('')}</dl><h2>Description</h2><p class="service-full-description">${escape(row.description)}</p></div>${review}`);
+    return layout(`Booking Request #${row.id}`,`${adminNav(csrf)}${row.customer_id?`<p><a href="/admin/customers/${Number(row.customer_id)}">View Customer Record</a></p>`:''}<div class="admin-card"><dl class="booking-details">${details.map(([k,v])=>`<dt>${escape(k)}</dt><dd>${escape(v)}</dd>`).join('')}</dl><h2>Description</h2><p class="service-full-description">${escape(row.description)}</p></div>${review}`);
 }

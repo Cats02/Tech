@@ -12,6 +12,7 @@ import { bookable, validateBooking, bookingFormPage, receivedPage, bookingTermsP
 import { reviewPanel } from './booking-review.js';
 import {settingsPage,calendarPage,calendarRange,validDay} from './scheduling.js';
 import {adelaideLocal,parseAdelaide} from './booking-time.js';
+import {customerPageNumber,validateCustomer,customerListPage,customerDetailPage} from './customers.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const publicPages = ['index.html', 'about.html', 'privacy.html', 'cad-3d-printing.html', 'website-development.html'];
@@ -19,7 +20,7 @@ const analyticsHashes = [...new Set(publicPages.flatMap(page =>
     [...readFileSync(`${root}${page}`, 'utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
         .filter(match => match[1].trim()).map(match => `'sha256-${createHash('sha256').update(match[1]).digest('base64')}'`)
 ))];
-export function createApp({ config, repository, sessionStore, serviceRepository, bookingRepository, reviewRepository, schedulingRepository }) {
+export function createApp({ config, repository, sessionStore, serviceRepository, bookingRepository, reviewRepository, schedulingRepository, customerRepository }) {
     if (!sessionStore) throw new Error('A persistent session store is required.');
     if (!serviceRepository) throw new Error('A service database repository is required.');
     if (!bookingRepository) throw new Error('A booking database repository is required.');
@@ -215,6 +216,31 @@ export function createApp({ config, repository, sessionStore, serviceRepository,
         }
     });
     app.get('/admin/services', async (req, res) => res.send(serviceListPage(await serviceRepository.list(), req.session.csrf)));
+    app.get('/admin/customers',async(req,res)=>{
+        if(!customerRepository)return res.status(404).send('Customers unavailable.');
+        const search=typeof req.query.q==='string'?req.query.q.trim():'';
+        if(search.length>100)return res.status(422).send(customerListPage({rows:[],total:0,page:1,search:''},req.session.csrf,['Search must be at most 100 characters.']));
+        res.send(customerListPage(await customerRepository.list(search,customerPageNumber(req.query.page)),req.session.csrf));
+    });
+    app.get('/admin/customers/:id',async(req,res)=>{
+        if(!customerRepository||!/^[1-9]\d{0,18}$/.test(req.params.id))return res.status(404).send('Customer not found.');
+        const data=await customerRepository.detail(req.params.id,customerPageNumber(req.query.page));
+        if(!data)return res.status(404).send('Customer not found.');
+        res.send(customerDetailPage(data,req.session.csrf,[],req.query.saved==='1'));
+    });
+    app.post('/admin/customers/:id',async(req,res)=>{
+        if(!customerRepository||!/^[1-9]\d{0,18}$/.test(req.params.id))return res.status(404).send('Customer not found.');
+        const data=await customerRepository.detail(req.params.id);
+        if(!data)return res.status(404).send('Customer not found.');
+        const result=validateCustomer(req.body);
+        if(result.errors.length)return res.status(422).send(customerDetailPage(data,req.session.csrf,result.errors,false,result.value));
+        try{await customerRepository.save(req.params.id,result.value);res.redirect(303,`/admin/customers/${req.params.id}?saved=1`);}
+        catch(error){
+            if(![404,409].includes(error.status))throw error;
+            const latest=await customerRepository.detail(req.params.id);if(!latest)return res.status(404).send('Customer not found.');
+            res.status(error.status).send(customerDetailPage(latest,req.session.csrf,[error.message]));
+        }
+    });
     app.get('/admin/services/new', (req, res) => res.send(serviceEditPage(null, [], req.session.csrf)));
     app.get('/admin/services/:id', async (req, res) => {
         if (!/^[1-9]\d{0,18}$/.test(req.params.id)) return res.status(404).send('Service not found.');

@@ -34,3 +34,4 @@
 .calendar-day h2 { font-size:1rem; }
 .calendar-day p { padding-block:10px; border-bottom:1px solid var(--tech-border); overflow-wrap:anywhere; }
 .calendar-day a { text-decoration:underline; text-underline-offset:.2em; }
+.customer-clear { display:inline-block; margin:16px; text-decoration:underline; }

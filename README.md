@@ -1,6 +1,6 @@
 # Everbright Digital
 
-Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–5 add secure administrator authentication, database-backed services/pricing, customer booking requests, manual approval, calendar views and availability management. Customer management and email are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
+Existing public HTML/CSS/JavaScript website with an incremental Node.js/Express and MySQL backend. Phases 1–6 add secure administrator authentication, database-backed services/pricing, customer booking requests, manual approval, calendar views, availability and private customer management. Transactional email and final production hardening are subsequent phases. The public layout, assets, URLs, enquiry form and accessibility features are preserved.
 
 ## Requirements
 
@@ -61,7 +61,7 @@ Before production: run both suites, dependency auditing, mobile/keyboard checks 
 3. Pending-only booking requests and customer association (implemented).
 4. Manual approval, proposals, decline/cancel/complete and history (implemented).
 5. Calendar, weekly availability, blocked periods and transactional overlap prevention (implemented).
-6. Customer management.
+6. Customer management (implemented).
 7. Durable transactional email outbox and delivery retries.
 8. Full security, accessibility, responsive and deployment verification.
 
@@ -124,3 +124,17 @@ The public booking form now asks customers to choose service and dates first, th
 Public submissions acquire the same database scheduling lock as approvals/settings, then recheck both preferences against current hours and reservations before creating a PENDING request. Manually crafted times must align with the offered 15-minute grid. Accept/propose also recheck hours and reservations using the saved duration (administrators can choose any minute inside hours). A slot may disappear between viewing and submitting; the customer then receives an availability conflict and refreshed choices. Pending requests do not remove a slot, so competing requests still receive explicit conflict warnings for manual review.
 
 `npm test` covers slot boundaries/durations, closed days, reservation/block exclusion, adjacent intervals, DST/month/week ranges, guarded scheduling writes, settings conflicts, escaped calendar text, public choice-only controls, authentication and CSRF. The disposable MySQL suite enables test availability for its fixtures; NEVER point that suite at your real business database. Before live use, verify configured hours, a blocked period, a confirmed appointment and the public available-time dropdown on staging.
+
+## Phase 6 deployment and customer records
+
+Before pushing this phase to `spare`, import `server/migrations/006-customer-profiles.sql` into the staging database, or apply migrations through the configured SSH environment. It adds a version table for customer edits; existing customer data, private notes and booking history are retained. No credentials, environment settings or dependencies change. Startup requires the new table.
+
+Admin → Customers lists customers created by booking requests. Search name, email, phone or address; results are paginated at 25 records. Search wildcards are treated as literal text and queries use bound parameters. Australian 04… phone searches also match canonical 614… numbers. Search text is carried in the private admin URL: hosting access logs/browser history may retain that URL, so use the shortest necessary search and restrict access to hosting logs.
+
+Open a customer to edit their name, email, phone, address/suburb and private notes, or follow links to their bookings. Current/future confirmed appointments appear separately from previous bookings and pending requests. History is paginated at 25 records; up to 100 upcoming confirmed appointments are shown. Booking detail pages link back to the associated customer profile.
+
+Profile edits never rewrite the name, contact details, address, service or price snapshots stored on past bookings. A repeated booking still uses normalised email+phone to associate customers. Changing profile contact details changes that matching key for later requests; requests using former details may need manual review. Profiles are not automatically merged by name/email alone. Saving contact details that collide with another existing email+phone pair returns a conflict and does not merge, delete or move either record. No customer-delete or merge operation is provided in this phase.
+
+All customer routes are behind the existing active-admin middleware, return no-store responses, and reject unprotected POSTs. Version checks reject stale profile edits. Private notes are escaped as plain text and never returned by public routes. Avoid storing passwords, payment data or unnecessary sensitive information in notes. Existing privacy/retention obligations still apply; configure database backups and protect hosting access separately.
+
+`npm test` covers profile validation/normalisation, search escaping/pagination, stale/duplicate edits, preserved booking prices, private-note escaping and auth/CSRF. The optional disposable MySQL suite adds real profile saves/searches/version checks and verifies a historical booking's customer snapshot does not change. Before live use, edit a test customer's note in staging, reopen the profile to verify persistence, and verify their booking history links.

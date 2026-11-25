@@ -9,6 +9,7 @@ import { createBookingRepository, validateBooking } from '../server/bookings.js'
 import { adelaideLocal } from '../server/booking-time.js';
 import { createReviewRepository } from '../server/booking-review.js';
 import {createSchedulingRepository} from '../server/scheduling.js';
+import {createCustomerRepository,validateCustomer} from '../server/customers.js';
 
 test('MySQL migrations, persistent sessions and atomic rate limits', async () => {
     if (process.env.ALLOW_TEST_DATABASE !== 'true' || !process.env.DB_NAME?.endsWith('_test')) {
@@ -100,6 +101,14 @@ test('MySQL migrations, persistent sessions and atomic rate limits', async () =>
             const [[reservationCount]]=await pool.execute('SELECT COUNT(*) AS total FROM calendar_reservations WHERE booking_id=?',[confirmedId]);
             assert.equal(Number(reservationCount.total),0);
             assert.equal((await bookings.get(confirmedId)).status,'CANCELLED');
+            const customers=createCustomerRepository(pool),profile=await customers.detail(customerId);
+            assert.ok(profile.history.some(b=>b.id===bookingId));
+            const edited=validateCustomer({name:'Updated integration customer',email,phone:'0412345678',address:'Updated suburb',notes:'Private test note',version:String(profile.customer.version)});
+            assert.deepEqual(edited.errors,[]);await customers.save(customerId,edited.value);
+            assert.equal((await customers.detail(customerId)).customer.notes,'Private test note');
+            assert.equal((await bookings.get(bookingId)).customer_name,'Booking integration');
+            await assert.rejects(customers.save(customerId,edited.value),{status:409});
+            const found=await customers.list(email);assert.ok(found.rows.some(c=>c.id===customerId));
         } finally {
             if(serviceId){
                 await pool.execute('DELETE FROM calendar_reservations WHERE booking_id IN (SELECT id FROM bookings WHERE service_id=?)',[serviceId]);
@@ -107,7 +116,7 @@ test('MySQL migrations, persistent sessions and atomic rate limits', async () =>
                 await pool.execute('DELETE FROM booking_review WHERE booking_id IN (SELECT id FROM bookings WHERE service_id=?)',[serviceId]);
                 await pool.execute('DELETE FROM bookings WHERE service_id = ?',[serviceId]);await pool.execute('DELETE FROM price_history WHERE service_id = ?',[serviceId]);await pool.execute('DELETE FROM services WHERE id = ?',[serviceId]);
             }
-            if(customerId)await pool.execute('DELETE FROM customers WHERE id = ?',[customerId]);
+            if(customerId){await pool.execute('DELETE FROM customer_versions WHERE customer_id=?',[customerId]);await pool.execute('DELETE FROM customers WHERE id = ?',[customerId]);}
             await pool.execute('DELETE FROM admin_users WHERE id = ?',[insert.insertId]);
         }
     } finally { await pool.end(); }
