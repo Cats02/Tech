@@ -180,3 +180,8 @@ The initial booking step offers a month calendar for the selected service. Green
 ## Admin calendar and booking references
 
 Month/week views now use a Monday-first seven-column calendar with labelled status chips and a selected-day agenda. On phones, calendar cells show date/entry counts and the complete agenda appears below. Date links work without JavaScript, preserve the view and focus the agenda. Each day shows two compact entries plus a link to the complete daily agenda. Multi-day reservations appear on every overlapping day. Existing scheduling/authentication behavior is unchanged. Booking references use at least three digits (001, 002, …, 1000) in admin screens and newly generated emails, while URLs and underlying database IDs remain unchanged. No migration required. Previously delivered emails are unchanged.
+
+
+## Android owner app
+
+The Android client lives in android-owner/. It provides a native Android navigation shell around the existing private admin screens, phone-lock protection and guarded HTTPS navigation. It uses the same server-side owner login and live data, with no second credential store. See android-owner/README.md for building, signing and Google Play preparation; DEVICE-TEST-CHECKLIST.md records checks that still require a phone. Website deployment does not install or publish the Android app. Build outputs, local SDKs and signing material are excluded from Git.

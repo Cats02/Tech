@@ -5,3 +5,10 @@ node_modules/
 coverage/
 *.log
 .local/
+
+# Android build outputs and private signing material
+android-owner/.gradle/
+android-owner/**/build/
+android-owner/local.properties
+*.jks
+*.keystore
